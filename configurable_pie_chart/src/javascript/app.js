@@ -462,9 +462,12 @@ Ext.define("TSConfigurablePieChart", {
                     var defn = field.attributeDefinition;
                     if ( !field.attributeDefinition) { return false; }
                     
+                    if ( field.name == "State" ) { return true; }
+                    
                     if ( defn.AttributeType != 'STRING' || !defn.Constrained ) {
                         return false;
                     }
+                    
                     return true;
                 },
                 handlesEvents: {
@@ -509,8 +512,8 @@ Ext.define("TSConfigurablePieChart", {
                     fields: ['name', 'value'],
                     data: [
                         { name: 'Count', value: 'count' },
-                        { name: 'Leaf Story Plan Estimate Total', value: 'leafplanest' },
-                        { name: 'Preliminary Estimate Value', value: 'prelimest' }
+                        { name: 'Preliminary Estimate Value', value: 'prelimest' },
+                        { name: 'Leaf Story Plan Estimate Total', value: 'leafplanest' }
                     ]
                 }),
                 handlesEvents: {

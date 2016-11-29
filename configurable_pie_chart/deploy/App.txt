@@ -3,13 +3,13 @@
 <head>
     <title>TS Configurable Pie Chart</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Nov 29 2016 13:25:20 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Nov 29 2016 13:30:40 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Nov 29 2016 13:25:20 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Nov 29 2016 13:30:40 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 11178136910;
+        var CHECKSUM = 11229430710;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -676,9 +676,12 @@ Ext.define("TSConfigurablePieChart", {
                     var defn = field.attributeDefinition;
                     if ( !field.attributeDefinition) { return false; }
                     
+                    if ( field.name == "State" ) { return true; }
+                    
                     if ( defn.AttributeType != 'STRING' || !defn.Constrained ) {
                         return false;
                     }
+                    
                     return true;
                 },
                 handlesEvents: {
@@ -723,8 +726,8 @@ Ext.define("TSConfigurablePieChart", {
                     fields: ['name', 'value'],
                     data: [
                         { name: 'Count', value: 'count' },
-                        { name: 'Leaf Story Plan Estimate Total', value: 'leafplanest' },
-                        { name: 'Preliminary Estimate Value', value: 'prelimest' }
+                        { name: 'Preliminary Estimate Value', value: 'prelimest' },
+                        { name: 'Leaf Story Plan Estimate Total', value: 'leafplanest' }
                     ]
                 }),
                 handlesEvents: {
