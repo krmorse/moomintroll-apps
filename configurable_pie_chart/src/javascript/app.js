@@ -4,6 +4,20 @@ Ext.define("TSConfigurablePieChart", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
+    layout: 'hbox',
+    items: [
+        {
+            xtype:'panel', 
+            itemId:'chart_box', 
+            flex: 1,
+            hideCollapseTool: true,
+            collapsible: true,
+            collapsed: false,
+            collapseDirection: 'left'
+        },
+        {xtype:'container', itemId:'detail_box'}
+    ],
+    
     integrationHeaders : {
         name : "TSConfigurablePieChart"
     },
@@ -18,10 +32,24 @@ Ext.define("TSConfigurablePieChart", {
             useNoneForBlank: true
         }
     },
-                        
+
     launch: function() {
         this.logger.log('Starting with:', this.getSettings());
-        this._updateData();
+        this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
+        
+        this._loadModel(this.getSetting('types')).then({
+            success: function(model) {
+                var field = model.getField(this.getSetting('aggregationField'));
+                this.fieldDisplayName = field.displayName;
+                this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
+
+                this._updateData();
+            },
+            failure: function(msg) {
+                Ext.Msg.alert('',msg);
+            },
+            scope: this
+        });
     },
     
     _updateData: function() {
@@ -36,6 +64,18 @@ Ext.define("TSConfigurablePieChart", {
                 Ext.Msg.alert('',msg);
             }
         });
+    },
+    
+    _loadModel: function(record_type) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        Rally.data.ModelFactory.getModel({
+            type: record_type,
+            success: function(model) {
+                deferred.resolve(model);
+            }
+        });
+        return deferred.promise;
     },
     
     _loadAllowedValues: function() {
@@ -173,17 +213,21 @@ Ext.define("TSConfigurablePieChart", {
 
     _prepareChartData: function(aggregated_data_hash) {
         this.logger.log('_prepareChartData - aggregated_data_hash:', aggregated_data_hash);
-
-        var series = [];
+        var series = [],
+            me = this;
+        
         Ext.Object.each(aggregated_data_hash, function(key,value){
             series.push({
                 name: key,
-                y: value
+                y: value,
+                events: {
+                    click: function() {
+                        me._showDetails(key, value);
+                    }
+                }
             });
         });
-        
-        this.logger.log(series);
-        
+                
         var chart_data = { 
             series: [{
                 name: '',
@@ -191,16 +235,14 @@ Ext.define("TSConfigurablePieChart", {
             }], 
             categories: Ext.Object.getKeys(aggregated_data_hash) 
         };
-        
-        this.logger.log(chart_data);
-        
+                
         return chart_data;
     },
     
     _makeChart: function(chart_data) {
         this.logger.log('_makeChart chart_data:', chart_data);
         
-        this.add({
+        this.down('#chart_box').add({
             xtype:'rallychart',
             chartData: chart_data,
             chartConfig: {
@@ -210,7 +252,7 @@ Ext.define("TSConfigurablePieChart", {
                     plotBorderWidth: null,
                     plotShadow: false
                 },
-                title: {text: ''},
+                title: {text: this.typeDisplayName + " by " + this.fieldDisplayName},
                 tooltip: {
                     headerFormat: '',
                     pointFormat: '{point.name}: <b>{point.percentage:.1f}%</b>'
@@ -228,8 +270,93 @@ Ext.define("TSConfigurablePieChart", {
                         }
                     }
                 }
-            },
+            }
         });
+    },
+    
+    _showDetails: function(group_name, value) {
+        if ( value === 0 ) {
+            return;
+        }
+        
+        var group_value = group_name;
+        if ( group_name == "None" ) { group_value = ""; }
+        
+        var filters = [{
+            property:this.getSetting('aggregationField'),
+            value: group_value
+        }];
+
+        var chart_box = this._getChartBox();
+        chart_box.collapse();
+        
+        var container = this._getDetailBox();
+        container.removeAll();
+        
+        container.add({
+            xtype:'panel',
+            hideCollapseTool: true,
+            collapsible: true,
+            collapsed: false,
+            collapseDirection: 'right',
+            headerPosition: 'left',
+            header: true,
+            cls: 'detail-panel',
+            width: this.getWidth() - 100,
+            height: this.getHeight() - 100,
+            layout: 'border',
+            margin: 5,
+            items: [{
+                xtype: 'container',
+                region: 'north',
+                layout: 'hbox',
+                items: [{
+                    xtype: 'rallybutton',
+                    cls: 'detail-collapse-button icon-leave',
+                    width: 18,
+                    margin: '0 10 0 25',
+                    userAction: 'Close (X) filter panel clicked',
+                    listeners: {
+                        click: function() {
+                            chart_box.expand();
+                            this.up('panel').destroy();
+                        }
+                    }
+                },{
+                    xtype: 'container',
+                    flex: 1,
+                    html: Ext.String.format(
+                        '<div class="detail-title">{0}: {1} = {2}</div>',
+                        this.typeDisplayName,
+                        this.fieldDisplayName,
+                        group_name
+                    )
+                }]
+            },{
+                xtype:'rallygrid',
+                margin: '3 10 10 25',
+                region:'center',
+                layout: 'fit',
+                storeConfig: {
+                    model: this.getSetting('types'),
+                    filters: filters
+                },
+                columnCfgs: this._getColumns()
+            }]
+        });
+        
+    },
+    
+    _getDetailBox: function() {
+        return this.down('#detail_box');
+    },
+    
+    _getChartBox: function() {
+        return this.down('#chart_box');
+    },
+    
+    _getColumns: function() {
+        return ['FormattedID','Name','Project','Owner',this.getSetting('aggregationField')];
     },
     
     getOptions: function() {
