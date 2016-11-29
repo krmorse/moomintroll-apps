@@ -39,7 +39,7 @@ Ext.define("TSConfigurablePieChart", {
         var me = this;
         
         if ( Ext.isEmpty(this.getSetting('types') ) ) {
-            this.getChartBox().add({
+            this._getChartBox().add({
                 xtype:'container',
                 html:'Please use Edit App Settings... from the gear menu to configure this app.'
             });
@@ -541,7 +541,7 @@ Ext.define("TSConfigurablePieChart", {
                     }
                 }
             },
-            { type: 'query' }
+            //{ type: 'query' }
         ];
     },
 

@@ -1,8 +1,21 @@
 #TS Configurable Pie Chart
 
+![screenshot](./images/screenshot.png "This is an example")
+
+This is a slightly configurable pie chart for portfolio items.  Users can choose a field to 
+aggregate by (for which there will be slices) and a metric (count, preliminary estimate, leaf
+story plan estimate), as well as which level of PI.
+
+![settings](./images/settings.png "Settings")
+
+Clicking on a slice of the pie will open a detail screen showing a table of items that
+make up that slice.
+
+![details](./images/details.png "Details")
+
+
 ## Development Notes
 
-![screenshot](./images/screenshot.png "This is an example")
 
 ### First Load
 

@@ -3,13 +3,13 @@
 <head>
     <title>TS Configurable Pie Chart</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Nov 29 2016 13:42:58 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Nov 29 2016 13:49:47 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Nov 29 2016 13:42:58 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Nov 29 2016 13:49:47 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 11500838528;
+        var CHECKSUM = 11503842138;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -253,7 +253,7 @@ Ext.define("TSConfigurablePieChart", {
         var me = this;
         
         if ( Ext.isEmpty(this.getSetting('types') ) ) {
-            this.getChartBox().add({
+            this._getChartBox().add({
                 xtype:'container',
                 html:'Please use Edit App Settings... from the gear menu to configure this app.'
             });
@@ -755,7 +755,7 @@ Ext.define("TSConfigurablePieChart", {
                     }
                 }
             },
-            { type: 'query' }
+            //{ type: 'query' }
         ];
     },
 
