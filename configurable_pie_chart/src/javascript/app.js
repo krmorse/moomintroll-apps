@@ -3,7 +3,7 @@ Ext.define("TSConfigurablePieChart", {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
-
+    
     layout: 'hbox',
     items: [
         {
@@ -13,7 +13,8 @@ Ext.define("TSConfigurablePieChart", {
             hideCollapseTool: true,
             collapsible: true,
             collapsed: false,
-            collapseDirection: 'left'
+            collapseDirection: 'left',
+            minHeight: 400
         },
         {xtype:'container', itemId:'detail_box'}
     ],
@@ -35,6 +36,8 @@ Ext.define("TSConfigurablePieChart", {
 
     launch: function() {
         this.logger.log('Starting with:', this.getSettings());
+        var me = this;
+        
         this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
         
         this._loadModel(this.getSetting('types')).then({
@@ -49,19 +52,26 @@ Ext.define("TSConfigurablePieChart", {
                 Ext.Msg.alert('',msg);
             },
             scope: this
-        });
+        }).always(function(){ me.setLoading(false);});
     },
     
     _updateData: function() {
+        var me = this;
+        this.setLoading("Loading...");
+        
         Deft.Chain.pipeline([
             this._loadAllowedValues,
             this._loadAggregationData,
             this._prepareChartData,
             this._makeChart
         ],this).then({
-            success: function(){},
+            success: function(){
+                me.setLoading(false);
+            },
             failure: function(msg) {
                 Ext.Msg.alert('',msg);
+                me.setLoading(false);
+
             }
         });
     },
@@ -102,6 +112,8 @@ Ext.define("TSConfigurablePieChart", {
         var deferred = Ext.create('Deft.Deferred'),
             me = this;
         
+        this.setLoading("Loading data...");
+
         this.logger.log('_loadAggregationData - allowed values:', allowed_value_array);
         
         var promises = [];
@@ -143,7 +155,7 @@ Ext.define("TSConfigurablePieChart", {
         var config = {
             model: record_type,
             filters: [{property:field_name,value:value}],
-            fetch: value_field,
+            fetch: ['Value',value_field],
             limit: Infinity,
             pageSize: 2000
         };
@@ -153,7 +165,11 @@ Ext.define("TSConfigurablePieChart", {
                 results = results || [];
                 
                 var values = Ext.Array.map(results, function(result) {
-                    return result.get(value_field) || 0;
+                    var value = result.get(value_field) || 0;
+                    if ( Ext.isObject(value) ) {
+                        value = value.Value;
+                    }
+                    return value;
                 });
                 
                 deferred.resolve(Ext.Array.sum(values));
@@ -253,9 +269,13 @@ Ext.define("TSConfigurablePieChart", {
                     plotShadow: false
                 },
                 title: {text: this.typeDisplayName + " by " + this.fieldDisplayName},
+                subtitle: { text: Ext.String.format('({0})',
+                            this._getFieldForAggregationType(this.getSetting('aggregationType')) || 'Count'
+                         )},
                 tooltip: {
                     headerFormat: '',
-                    pointFormat: '{point.name}: <b>{point.percentage:.1f}%</b>'
+//                    pointFormat: '{point.name}: <b>{point.percentage:.1f}%</b>'
+                    pointFormat: '{point.name}: <b>{point.y}</b>'
                 },
                 plotOptions: {
                     pie: {
@@ -272,6 +292,7 @@ Ext.define("TSConfigurablePieChart", {
                 }
             }
         });
+        return;
     },
     
     _showDetails: function(group_name, value) {
@@ -356,7 +377,11 @@ Ext.define("TSConfigurablePieChart", {
     },
     
     _getColumns: function() {
-        return ['FormattedID','Name','Project','Owner',this.getSetting('aggregationField')];
+        var columns = ['FormattedID','Name','Project','Owner',this.getSetting('aggregationField')];
+        if ( this._getFieldForAggregationType(this.getSetting('aggregationType')) ) {
+            columns.push(this._getFieldForAggregationType(this.getSetting('aggregationType')));
+        }
+        return columns;
     },
     
     getOptions: function() {
@@ -484,7 +509,6 @@ Ext.define("TSConfigurablePieChart", {
                     fields: ['name', 'value'],
                     data: [
                         { name: 'Count', value: 'count' },
-                        { name: 'Plan Estimate', value: 'estimate' },
                         { name: 'Leaf Story Plan Estimate Total', value: 'leafplanest' },
                         { name: 'Preliminary Estimate Value', value: 'prelimest' }
                     ]
@@ -514,7 +538,7 @@ Ext.define("TSConfigurablePieChart", {
         if (aggregationType === 'estimate') {
             return 'PlanEstimate';
         } else if (aggregationType === 'prelimest') {
-            return 'PreliminaryEstimateValue';
+            return 'PreliminaryEstimate';
         } else if (aggregationType === 'leafplanest') {
             return 'LeafStoryPlanEstimateTotal';
         }
