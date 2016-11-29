@@ -25,7 +25,7 @@ Ext.define("TSConfigurablePieChart", {
     
     config: {
         defaultSettings: {
-            types: 'defect',
+            types: null,
             chartType: 'piechart',
             aggregationField: 'State',
             aggregationType: 'count',
@@ -37,6 +37,14 @@ Ext.define("TSConfigurablePieChart", {
     launch: function() {
         this.logger.log('Starting with:', this.getSettings());
         var me = this;
+        
+        if ( Ext.isEmpty(this.getSetting('types') ) ) {
+            this.getChartBox().add({
+                xtype:'container',
+                html:'Please use Edit App Settings... from the gear menu to configure this app.'
+            });
+            return;
+        }
         
         this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
         
@@ -424,7 +432,7 @@ Ext.define("TSConfigurablePieChart", {
                     model: 'TypeDefinition',
                     sorters: [{ property: 'DisplayName' }],
                     fetch: ['DisplayName', 'TypePath'],
-                    filters: [{ property: 'UserListable', value: true }],
+                    filters: [{ property: 'TypePath', operator: 'contains', value: 'PortfolioItem/' }],
                     autoLoad: false,
                     remoteSort: false,
                     sortOnLoad: true,
