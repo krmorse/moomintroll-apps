@@ -536,11 +536,9 @@ Ext.define("TSConfigurablePieChart", {
                 autoSelect: false,
                 validateOnChange: false,
                 validateOnBlur: false,
-                fieldLabel: 'Type', //todo: delete when multiselect enabled
-                // multiSelect: true, //todo: need to validate either all artifacts chosen or only one non-artifact
+                fieldLabel: 'Artifact Type', 
                 shouldRespondToScopeChange: true,
                 context: this.getContext(),
-                // initialValue: ['HierarchicalRequirement'], //todo: not working
                 storeConfig: {
                     model: 'TypeDefinition',
                     sorters: [{ property: 'DisplayName' }],
@@ -573,7 +571,7 @@ Ext.define("TSConfigurablePieChart", {
                 name: 'aggregationField', //todo: don't validate on settings load
                 xtype: 'rallyfieldcombobox',
                 plugins: ['rallyfieldvalidationui'],
-                fieldLabel: 'Aggregate By',
+                fieldLabel: 'Attribute Type',
                 readyEvent: 'ready',
                 allowBlank: false,
                 validateOnChange: false,
@@ -645,7 +643,7 @@ Ext.define("TSConfigurablePieChart", {
                 name: 'aggregationType',
                 xtype: 'rallycombobox',
                 plugins: ['rallyfieldvalidationui'],
-                fieldLabel: 'Aggregation Type',
+                fieldLabel: 'Sum Field',
                 displayField: 'name',
                 valueField: 'value',
                 editable: false,
