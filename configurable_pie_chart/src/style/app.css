@@ -16,6 +16,9 @@
     cursor: pointer;
 }
 
+.x-panel-body-default {
+    border-color: #fff;
+}
 
 .detail-title {
     color: #222222;

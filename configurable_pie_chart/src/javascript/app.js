@@ -15,6 +15,7 @@ Ext.define("TSConfigurablePieChart", {
             collapsed: false,
             collapseDirection: 'left',
             minHeight: 400,
+            border: false,
             margin: 0,
             items: [
                 { xtype:'container', itemId: 'selector_box', layout: 'hbox' },
@@ -96,17 +97,6 @@ Ext.define("TSConfigurablePieChart", {
                 scope: this
             }
         });
-    
-//        container.add({
-//            xtype: 'listfilterbutton',
-//            context: this.getContext(),
-//            margin: '10 5 10 5',
-//            listeners: {
-//                scope: this,
-//                listready: this.addListFilterPanel,
-//                listupdated: this._updateData
-//            }
-//        });
     
     },
     
@@ -256,6 +246,8 @@ Ext.define("TSConfigurablePieChart", {
     
     _getSingleValueFilter: function(value) {
         var field_name = this.getSetting('aggregationField');
+        if ( value == "None" ) { value = ""; }
+        
         var filters = [{property:field_name,value:value}];
         
         if (this.field.attributeDefinition.AttributeType == "OBJECT" && field_name != "State") {
@@ -398,6 +390,7 @@ Ext.define("TSConfigurablePieChart", {
             collapseDirection: 'right',
             headerPosition: 'left',
             header: true,
+            border: false,
             cls: 'detail-panel',
             width: this.getWidth() - 100,
             height: this.getHeight() - 100,
@@ -429,19 +422,67 @@ Ext.define("TSConfigurablePieChart", {
                         group_name
                     )
                 }]
-            },{
-                xtype:'rallygrid',
-                margin: '3 10 10 25',
-                region:'center',
-                layout: 'fit',
-                storeConfig: {
-                    model: this.getSetting('types'),
-                    filters: filters
-                },
-                columnCfgs: this._getColumns()
+            },{ 
+                xtype: 'container',
+                itemId:'grid_box'
             }]
         });
         
+        Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
+            autoLoad: true,
+            childPageSizeEnabled: true,
+            enableHierarchy: true,
+            fetch: this._getColumns(), 
+            models: this.getSetting('types'),
+            pageSize: 25,
+            filters: this._getSingleValueFilter(group_name),
+            root: {expanded: true}
+        }).then({
+            success: function(store) {
+                this.addGridBoard(store,group_name)
+            },
+            scope: this
+        });
+        
+    },
+    
+    addGridBoard: function(store,group_name) {
+        this.logger.log('addGridBoard', store, group_name);
+        
+        var gridContainer = this.down('#grid_box');
+        
+        if (this.getGridboard()) {
+            this.getGridboard().destroy();
+        }
+
+        var gridboard = Ext.create('Rally.ui.gridboard.GridBoard', {
+            itemId: 'gridboard',
+            toggleState: 'grid',
+            plugins:[{
+                ptype:'rallygridboardfieldpicker',
+                headerPosition: 'left',
+                margin: '3 0 0 10'
+            }],
+            gridConfig: {
+                stateful: true,
+                stateId: this.getContext().getScopedStateId('configurable-pie-chart-details'),
+                state: ['columnschanged','viewready','reconfigure'],
+                enableRanking: false,
+                store: store,
+                columnCfgs: this._getColumns(),
+                storeConfig: {
+                    filters: this._getSingleValueFilter(group_name)
+                },
+                height: gridContainer.getHeight() - 75,
+                width: gridContainer.getWidth() - 100
+            }
+        });
+
+        this.gridboard = gridContainer.add(gridboard);
+    },
+    
+    getGridboard: function(){
+        return this.gridboard;
     },
     
     _getDetailBox: function() {
