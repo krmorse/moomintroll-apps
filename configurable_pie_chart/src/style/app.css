@@ -1,0 +1,51 @@
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.x-panel-body-default {
+    border-color: #fff;
+}
+
+.detail-title {
+    color: #222222;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    padding-top: 5px;
+}
+
+.detail-panel {
+    border-left-style: solid;
+    border-left-width: 5px;
+    border-left-color: #d6d6d6;
+}
+
+.detail-collapse-button {
+    background-color: transparent;
+    color: #a9a9a9;
+    font-size: 16px;
+    line-height: 12px;
+    vertical-align: middle;
+    margin: 10px 0 0 0;
+    padding: 10px 0 0 0;
+    right: 8px;
+    top: 16px;
+    z-index: 2;
+}
+
+.x-border-layout-ct {
+    background-color: white;
+}

@@ -1,0 +1,12 @@
+{
+    "name": "TS Configurable Pie Chart",
+    "sdk": "2.1",
+    "className": "TSConfigurablePieChart",
+    "story": "F166",
+    "javascript": [
+        "../common/src/javascript/colors.js",
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "src/javascript/app.js"
+    ]
+}
