@@ -50,8 +50,8 @@ Ext.define("TSConfigurablePieChart", {
         
         this._loadModel(this.getSetting('types')).then({
             success: function(model) {
-                var field = model.getField(this.getSetting('aggregationField'));
-                this.fieldDisplayName = field.displayName;
+                this.field = model.getField(this.getSetting('aggregationField'));
+                this.fieldDisplayName = this.field.displayName;
                 this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
 
                 this._updateData();
@@ -196,10 +196,22 @@ Ext.define("TSConfigurablePieChart", {
         
         var config = {
             model: record_type,
-            filters: [{property:field_name,value:value}]
+            filters: this._getSingleValueFilter(value)
         };
         
         return this._loadWsapiCount(config);
+    },
+    
+    _getSingleValueFilter: function(value) {
+        var field_name = this.getSetting('aggregationField');
+        var filters = [{property:field_name,value:value}];
+        
+        this.logger.log('field:', this.field);
+        
+        if (this.field.attributeDefinition.AttributeType == "OBJECT" && field_name != "State") {
+            filters = [{property:field_name + ".Name",value:value}];
+        }
+        return filters;
     },
     
     _loadWsapiCount: function(config){
@@ -286,7 +298,7 @@ Ext.define("TSConfigurablePieChart", {
                 tooltip: {
                     headerFormat: '',
 //                    pointFormat: '{point.name}: <b>{point.percentage:.1f}%</b>'
-                    pointFormat: '{point.name}: <b>{point.y}</b>'
+                    pointFormat: '{point.name}: <b>{point.y} ({point.percentage:.1f}%)</b>'
                 },
                 plotOptions: {
                     pie: {
@@ -314,10 +326,7 @@ Ext.define("TSConfigurablePieChart", {
         var group_value = group_name;
         if ( group_name == "None" ) { group_value = ""; }
         
-        var filters = [{
-            property:this.getSetting('aggregationField'),
-            value: group_value
-        }];
+        var filters = this._getSingleValueFilter(group_value);
 
         var chart_box = this._getChartBox();
         chart_box.collapse();
@@ -469,17 +478,38 @@ Ext.define("TSConfigurablePieChart", {
                 validateOnChange: false,
                 validateOnBlur: false,
                 _isNotHidden: function(field) {
+
+                    var blackList = ['Subscription','Workspace','Parent',
+                        'RevisionHistory','PortfolioItemType','Owner','Project',
+                        'Release'];  
+                    
+                    /*
+                     *  NOTE: Blacklisting release, owner, and project just because 
+                     *        the way the search works is for all valid values, so 
+                     *        these would have a lot of potentially empty slices.  Can
+                     *        turn this back on if we decide to remove the 0 sized slices.
+                     */
+            
+                    if (Ext.Array.contains(blackList, field.name)) { return false; }
+                    
                     if ( field.hidden ) { return false; }
                     var defn = field.attributeDefinition;
                     if ( !field.attributeDefinition) { return false; }
                     
-                    if ( field.name == "State" ) { return true; }
-                    
-                    if ( defn.AttributeType != 'STRING' || !defn.Constrained ) {
-                        return false;
+                    if ( defn.AttributeType == 'STRING' && defn.Constrained ) {
+                        return true;
+                    }       
+                    if ( defn.AttributeType == 'RATING' ) {
+                        return true;
                     }
                     
-                    return true;
+                    //console.log(field.name, defn, field);
+
+                    if (defn.AttributeType == "OBJECT" ) {
+                        return true;
+                    }
+                    
+                    return false;
                 },
                 handlesEvents: {
                     typeselected: function (models, context) {
