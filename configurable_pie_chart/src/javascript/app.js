@@ -265,10 +265,13 @@ Ext.define("TSConfigurablePieChart", {
     
     _makeChart: function(chart_data) {
         this.logger.log('_makeChart chart_data:', chart_data);
-        
+       
+        var colors = CA.agile.technicalservices.Colors.getRepeatedBasicColors(4);
+         
         this.down('#chart_box').add({
             xtype:'rallychart',
             chartData: chart_data,
+            chartColors: colors,
             chartConfig: {
                 chart: {
                     type: 'pie',

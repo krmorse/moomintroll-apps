@@ -3,13 +3,13 @@
 <head>
     <title>TS Configurable Pie Chart</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Nov 29 2016 13:49:47 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Nov 30 2016 07:51:22 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Nov 29 2016 13:49:47 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Wed Nov 30 2016 07:51:22 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 11503842138;
+        var CHECKSUM = 12557666078;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -19,6 +19,36 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('CA.agile.technicalservices.Colors', {
+    singleton: true,
+    
+    // base colors: 
+    pumpkin: '#FF671B', // darker orange
+    tangerine: '#F38B00', // lighter orange
+    turbo: '#FFC81F',  // off-yellow
+    limerick: '#8DB92E', // green
+
+    getBasicColors: function() {
+        return [this.pumpkin,this.tangerine,this.turbo,this.limerick];
+    },
+
+    /*
+     * repeat:  The number of times to repeat the basic array
+     *          0 will return the basic array, 1 will return 
+     *          the basic array and one repetition of the array
+     */
+    getRepeatedBasicColors: function(repeat) {
+        var color_array = [];
+        if ( Ext.isEmpty(repeat) ) { repeat = 0; }
+
+        for ( var i=0; i<repeat; i++ ) {
+            color_array = Ext.Array.push(color_array,this.getBasicColors());
+        }
+        return color_array;
+    }
+
+});
+
 /**
  * A link that pops up a version dialog box
  */
@@ -479,10 +509,13 @@ Ext.define("TSConfigurablePieChart", {
     
     _makeChart: function(chart_data) {
         this.logger.log('_makeChart chart_data:', chart_data);
-        
+       
+        var colors = CA.agile.technicalservices.Colors.getRepeatedBasicColors(4);
+         
         this.down('#chart_box').add({
             xtype:'rallychart',
             chartData: chart_data,
+            chartColors: colors,
             chartConfig: {
                 chart: {
                     type: 'pie',
