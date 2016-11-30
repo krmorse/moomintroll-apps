@@ -8,13 +8,19 @@ Ext.define("TSConfigurablePieChart", {
     items: [
         {
             xtype:'panel', 
-            itemId:'chart_box', 
+            itemId:'chart_box_panel', 
             flex: 1,
             hideCollapseTool: true,
             collapsible: true,
             collapsed: false,
             collapseDirection: 'left',
-            minHeight: 400
+            minHeight: 400,
+            margin: 0,
+            items: [
+                { xtype:'container', itemId: 'selector_box', layout: 'hbox' },
+                { xtype:'container', itemId: 'advanced_filter_box', flex: 1},
+                { xtype:'container', itemId: 'chart_box', flex: 1}
+            ]
         },
         {xtype:'container', itemId:'detail_box'}
     ],
@@ -46,15 +52,15 @@ Ext.define("TSConfigurablePieChart", {
             return;
         }
         
-        this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
-        
         this._loadModel(this.getSetting('types')).then({
             success: function(model) {
+                this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
                 this.field = model.getField(this.getSetting('aggregationField'));
                 this.fieldDisplayName = this.field.displayName;
                 this.typeDisplayName = this.getSetting('types').replace(/.*\//,'');
 
-                this._updateData();
+                this._addSelectors();
+                //this._updateData();
             },
             failure: function(msg) {
                 Ext.Msg.alert('',msg);
@@ -63,9 +69,55 @@ Ext.define("TSConfigurablePieChart", {
         }).always(function(){ me.setLoading(false);});
     },
     
+    _addSelectors: function() {
+        var container = this.down('#selector_box');
+        container.removeAll();
+//        var fp = this.getSelectorBox().add({
+//            xtype: 'fieldpickerbutton',
+//            modelNames: [this.getSetting('types')],
+//            context: this.getContext(),
+//            margin: '10 5 10 5',
+//            stateful: true,
+//            stateId: 'grid-columns'
+//        });
+//        fp.on('fieldsupdated', this.updateStoreFields, this);
+    
+        container.add({
+            xtype: 'rallyinlinefilterbutton',
+            modelNames: [this.getSetting('types')],
+            context: this.getContext(),
+            margin: '10 5 10 5',
+    
+            stateful: true,
+            stateId: 'grid-filters-1',
+            listeners: {
+                inlinefilterready: this._addInlineFilterPanel,
+                inlinefilterchange: this._updateData,
+                scope: this
+            }
+        });
+    
+//        container.add({
+//            xtype: 'listfilterbutton',
+//            context: this.getContext(),
+//            margin: '10 5 10 5',
+//            listeners: {
+//                scope: this,
+//                listready: this.addListFilterPanel,
+//                listupdated: this._updateData
+//            }
+//        });
+    
+    },
+    
+    _addInlineFilterPanel: function(panel) {
+        this.down('#advanced_filter_box').add(panel);
+    },
+    
     _updateData: function() {
         var me = this;
         this.setLoading("Loading...");
+        this._getChartBox().removeAll();
         
         Deft.Chain.pipeline([
             this._loadAllowedValues,
@@ -213,7 +265,6 @@ Ext.define("TSConfigurablePieChart", {
         var single_value_filter = Rally.data.wsapi.Filter.and(filters);
         var base_filters = this._getBaseFilters();
         
-        console.log(base_filters);
         if ( Ext.isEmpty(base_filters) ) { return single_value_filter; }
         
         return base_filters.and(single_value_filter);
@@ -285,7 +336,7 @@ Ext.define("TSConfigurablePieChart", {
        
         var colors = CA.agile.technicalservices.Colors.getRepeatedBasicColors(4);
          
-        this.down('#chart_box').add({
+        this._getChartBox().add({
             xtype:'rallychart',
             chartData: chart_data,
             chartColors: colors,
@@ -333,7 +384,7 @@ Ext.define("TSConfigurablePieChart", {
         
         var filters = this._getSingleValueFilter(group_value);
 
-        var chart_box = this._getChartBox();
+        var chart_box = this._getChartPanel();
         chart_box.collapse();
         
         var container = this._getDetailBox();
@@ -399,6 +450,10 @@ Ext.define("TSConfigurablePieChart", {
     
     _getChartBox: function() {
         return this.down('#chart_box');
+    },
+    
+    _getChartPanel: function() {
+        return this.down('#chart_box_panel');
     },
     
     _getColumns: function() {
@@ -593,16 +648,44 @@ Ext.define("TSConfigurablePieChart", {
         }
     },
     
-    _getBaseFilters: function() {
+    _getFiltersFromButton: function() {
+        var filterButton = this.down('rallyinlinefilterbutton');
+        if (filterButton && filterButton.inlineFilterPanel && filterButton.getWsapiFilter()){
+            return filterButton.getWsapiFilter();
+        }
+        
+        return null;
+    },
+    
+    _getFiltersFromSettingsQuery: function() {
         var queries = [],
-            timeboxScope = this.getContext().getTimeboxScope();
+        timeboxScope = this.getContext().getTimeboxScope();
         if (this.getSetting('query')) {
             queries.push(Rally.data.QueryFilter.fromQueryString(this.getSetting('query')));
         }
         if (timeboxScope && _.any(this.models, timeboxScope.isApplicable, timeboxScope)) {
             queries.push(timeboxScope.getQueryFilter());
         }
+        if ( queries.length === 0 ) {
+            return null;
+        }
         return Rally.data.wsapi.Filter.and(queries);
+    },
+    
+    _getBaseFilters: function() {
+        var filters = this._getFiltersFromSettingsQuery();
+        var advanced_filters = this._getFiltersFromButton();
+        
+        if ( filters && advanced_filters ) {
+            filters = filters.and(advanced_filters);
+        }
+        
+        if ( !filters ) { 
+            filters = advanced_filters;
+        }
+        
+        return filters;
+        
     }
     
 });
