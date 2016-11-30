@@ -162,7 +162,7 @@ Ext.define("TSConfigurablePieChart", {
         
         var config = {
             model: record_type,
-            filters: [{property:field_name,value:value}],
+            filters: this._getSingleValueFilter(value),
             fetch: ['Value',value_field],
             limit: Infinity,
             pageSize: 2000
@@ -206,12 +206,17 @@ Ext.define("TSConfigurablePieChart", {
         var field_name = this.getSetting('aggregationField');
         var filters = [{property:field_name,value:value}];
         
-        this.logger.log('field:', this.field);
-        
         if (this.field.attributeDefinition.AttributeType == "OBJECT" && field_name != "State") {
             filters = [{property:field_name + ".Name",value:value}];
         }
-        return filters;
+        
+        var single_value_filter = Rally.data.wsapi.Filter.and(filters);
+        var base_filters = this._getBaseFilters();
+        
+        console.log(base_filters);
+        if ( Ext.isEmpty(base_filters) ) { return single_value_filter; }
+        
+        return base_filters.and(single_value_filter);
     },
     
     _loadWsapiCount: function(config){
@@ -574,7 +579,7 @@ Ext.define("TSConfigurablePieChart", {
                     }
                 }
             },
-            //{ type: 'query' }
+            { type: 'query' }
         ];
     },
 
@@ -586,6 +591,18 @@ Ext.define("TSConfigurablePieChart", {
         } else if (aggregationType === 'leafplanest') {
             return 'LeafStoryPlanEstimateTotal';
         }
+    },
+    
+    _getBaseFilters: function() {
+        var queries = [],
+            timeboxScope = this.getContext().getTimeboxScope();
+        if (this.getSetting('query')) {
+            queries.push(Rally.data.QueryFilter.fromQueryString(this.getSetting('query')));
+        }
+        if (timeboxScope && _.any(this.models, timeboxScope.isApplicable, timeboxScope)) {
+            queries.push(timeboxScope.getQueryFilter());
+        }
+        return Rally.data.wsapi.Filter.and(queries);
     }
     
 });
