@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Movement</title>
+    <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Wed Nov 30 2016 09:08:38 GMT-0700 (MST) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Wed Nov 30 2016 09:08:38 GMT-0700 (MST)";
+        var CHECKSUM = [%= checksum %];
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            
+            
+               Rally.launchApp('portfolio-movement', {
+                   name: 'Portfolio Movement'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.flagged {
+    text-align: center;
+    font-size: 16px;
+    color: #EE1C25;
+}
+
+sub {
+    font-family: NotoSans, Helvetica, Arial;
+    color: #333;
+    font-size: 9px!important;
+    vertical-align: sub;
+}
+
+.flagged .tooltiptext {
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    font-family: NotoSans, Helvetica, Arial;
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+}
+.flagged:hover .tooltiptext {
+    visibility: visible;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
