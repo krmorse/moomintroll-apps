@@ -4,8 +4,7 @@ Ext.define("portfolio-movement", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'selector_box', flex: 1, float: 'right', tpl: '<div class="no-data-container"><div class="secondary-message">{message}</div></div>'},
-        {xtype:'container',itemId:'grid_box', flex: 1}
+         {xtype:'container',itemId:'grid_box', flex: 1}
     ],
 
     integrationHeaders : {
@@ -14,19 +13,31 @@ Ext.define("portfolio-movement", {
 
     config: {
         defaultSettings: {
+            portfolioItemFetch: ['ActualStartDate','ActualEndDate','AcceptedLeafStoryCount','ObjectID','LeafStoryCount','StateChangedDate'],
             portfolioItemType: 'PortfolioItem/Initiative',
             flags: [{
                 flagRule: function(record){
+                    var flagStates = ['In-Progress','Staging'];
                     var state = record.get('State') && record.get('State').Name;
-                    if (state && state === 'Measuring'){
+                    if (!Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
+                            return true;
+                        }
+                        if (!record.get('ActualStartDate')){
                             return true;
                         }
                     }
                     return false;
                 },
+                flagValue: function(record){
+                    var value = 0;
+                    if (record.get('LeafStoryCount') > 0){
+                        value = record.get('LeafStoryCount') - record.get('AcceptedLeafStoryCount');
+                    }
+                    return value;
+                },
                 text: "Active Stories exist",
-                tooltip: "Active Stories exist for a Portfolio Item in Measuring state",
+                tooltip: "Active Stories exist for a Portfolio Item that is not in the In-Progress or Staging State.",
                 dataIndex: '__activeStoriesInMeasuring'
             }],
             query: '(StateChangedDate = today-30)'
@@ -45,9 +56,11 @@ Ext.define("portfolio-movement", {
         return true;
     },
     initializeApp: function(){
+
         this.buildPortfolioStore();
     },
     buildPortfolioStore: function(){
+        this.getGridBox().removeAll();
         Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
             models: this.getModelNames(),
             enableHierarchy: true,
@@ -112,7 +125,11 @@ Ext.define("portfolio-movement", {
         this.suspendEvents();
         for (var i=0; i<records.length; i++){
             Ext.Array.each(this.getFlags(), function(flag){
-                var val = flag.flagRule(records[i]);
+                var val = false;
+                if (flag.flagRule(records[i])){
+                    val = flag.flagValue(records[i]);
+                }
+               // var val = flag.flagRule(records[i]);
                 records[i].set(flag.dataIndex, val);
             });
         }
@@ -230,32 +247,26 @@ Ext.define("portfolio-movement", {
     getColumnConfigs: function(){
         return [{
             dataIndex: 'Name',
-            text: 'Name'
+            text: 'Name',
+            flex: 3
         },{
             dataIndex: 'State',
-            text: 'State'
+            text: 'State',
+            flex: 1
         }].concat(this.getDerivedColumns());
     },
     getDerivedColumns: function(){
-
-        var cols = [{
-            dataIndex: '__lastUserToChangeState',
-            xtype: 'templatecolumn',
-            text: 'State Changed User',
-            flex: 1,
-            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
-        }];
-
+        var cols = [];
         Ext.Array.each(this.getFlags(), function(flag){
             //var tpl = '<div><tpl if="' + flag.dataIndex + '">' +
             //    '<div class="flagged" ><div class="icon-flag"></div><span class="tooltiptext">' + flag.tooltip || flag.text  + '</span></div>' +
             //    '</tpl></div>';
 
             var templateConfig = [
-                '{[this.formatBoolean(values["' + flag.dataIndex + '"])]}',
+                '{[this.formatFlag(values["' + flag.dataIndex + '"])]}',
                 {
-                    formatBoolean:function (value) {
-                        return (value) ? '<div class="flagged"><div class="icon-flag"></div><span class="tooltiptext">' + flag.tooltip || flag.text  + '</span></div>' : '';
+                    formatFlag:function (value) {
+                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{1}</span><div class="icon-flag"></div><sub>{0}</sub></div>',value, flag.tooltip || flag.text) : '';
                     }
                 }];
 
@@ -269,6 +280,16 @@ Ext.define("portfolio-movement", {
 
             });
         });
+
+       cols.push({
+            dataIndex: '__lastUserToChangeState',
+            xtype: 'templatecolumn',
+            text: 'State Changed User',
+            flex: 2,
+            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
+        });
+
+
         return cols;
     },
     fetchUsers: function(userOids){
@@ -309,8 +330,14 @@ Ext.define("portfolio-movement", {
         return [];
     },
     getDefaultFetch: function(){
-        return ['PlannedEndDate','Milestones','ObjectID','TargetDate','LeafStoryCount','StateChangedDate'];
-    },
+        var fetch = [],
+            fetchSetting = this.getSetting('portfolioItemFetch');
+        if (!Ext.isArray(fetchSetting)){
+            fetch = Ext.JSON.decode(fetchSetting);
+        } else {
+            fetch = fetchSetting;
+        }
+        return fetch;    },
     getFlags: function(){
         var flags = [],
             flag_setting = this.getSetting('flags');
@@ -324,9 +351,6 @@ Ext.define("portfolio-movement", {
     },
     getModelNames: function(){
         return [this.getSetting('portfolioItemType')];
-    },
-    getSelectorBox: function(){
-        return this.down('#selector_box');
     },
     getGridBox: function(){
         return this.down('#grid_box');
