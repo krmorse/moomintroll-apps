@@ -23,9 +23,9 @@ Ext.define("portfolio-movement", {
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
                             return true;
                         }
-                        if (!record.get('ActualStartDate')){
-                            return true;
-                        }
+                        //if (!record.get('ActualStartDate')){
+                        //    return true;
+                        //}
                     }
                     return false;
                 },

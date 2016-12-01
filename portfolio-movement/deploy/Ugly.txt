@@ -3,10 +3,10 @@
 <head>
     <title>Portfolio Movement</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 01 2016 14:14:06 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Dec 01 2016 14:18:47 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 01 2016 14:14:06 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Thu Dec 01 2016 14:18:47 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     

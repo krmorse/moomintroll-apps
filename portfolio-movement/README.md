@@ -1,16 +1,16 @@
 #Portfolio Movement
-```
-#LBAPI #SDK 2.1 
-```
+
+<sub>uses Lookback API (LBAPI) and SDK 2.1</sub>
+
+Scenario: I want to see what Portfolio Items changed state in the last 30 days and who changed the State.  I also want to pay special attention to whether or not some items have active stories when we are not in the "In-Progress" or "Staging" Portfolio State.
 
 Displays the list of portfolio item Initiatives that moved status in the last 30 days (by default).  
 
 Special attention should be paid to items in selected states.  
 
-If an item is in a "flagged state" and has active stories (Actual End Date is not populated and Leaf Story Count > 0) assigned to it, it will be flagged as a problem.  
+If an item is in a "flagged state" and has active stories (Actual Start Date is populated, Actual End Date is not populated and Leaf Story Count > 0) assigned to it, it will be flagged as a problem.  
 
 ![ScreenShot](/images/portfolio-movement.png)
-
 
 ###The grid will show: 
 
