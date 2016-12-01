@@ -1,5 +1,28 @@
 #Initiative Team Allocation
 
+App to show how much time a leaf node team is spending on an initiative at the current time.  
+
+![ScreenShot](/images/initiative-team-allocation.png)
+
+For each Initiative shown:
+*  Line of Business - This is the third level project associated with the Team working on the initiative
+*  Team Name - This is the leaf node team working on the initiative 
+*  Percent of Time Spent - This is the percent of time that the Team is currently spending on the initiative.  
+
+The Percent of Time Spent is calculated by the sum of all "Active" story points associated with the initiative that the Team is working on divided by the total sum of all "Active" story points that the Team is currently working on.  
+
+An "Active" story is a leaf node (e.g. no children) story that is currently in a state of "Defined", "In-Progress" or "Completed".  
+
+Initiatives can be filtered using the advanced filter component.  
+
+Notes:
+
+*  Shows blank if there is at least 1 active story, but no estimates.
+*  Shows 0.0% if there is at least 1 active story, but 0 points.  
+*  Percent Work Completed column shows "rounded" points.  
+*  This app does not follow the project scope for fetching stories so data will only be displayed if the user has access to it.  
+*  This app assumes that there is at least 3 levels of project hierarchy
+
 ## Development Notes
 
 ### First Load

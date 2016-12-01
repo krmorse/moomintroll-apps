@@ -1,21 +1,36 @@
 #Portfolio Movement
+```
+#LBAPI #SDK 2.1 
+```
 
-Displays the list of portfolio items that moved status in the last 30 days.  
+Displays the list of portfolio item Initiatives that moved status in the last 30 days (by default).  
+
 Special attention should be paid to items in selected states.  
-If an item is in a "flagged state" and has active stories assigned to it, it will be flagged as a problem.  
 
-The grid will show: 
+If an item is in a "flagged state" and has active stories (Actual End Date is not populated and Leaf Story Count > 0) assigned to it, it will be flagged as a problem.  
 
-*  Selected standard columns.  By default these include:
+![ScreenShot](/images/portfolio-movement.png)
+
+
+###The grid will show: 
+
+####Selected standard columns.  By default these include:
 *  Portfolio ID (Always Selected) - Will be flagged 
 *  Portfolio Name (Always Selected) 
 *  Portfolio Release
 *  Portfolio Owner
 *  %Complete based on Story Points
 
-Additional (non-standard permanent columns):
-* Who moved it into the current state
+####Additional (non-standard permanent columns):
+*  Who moved it into the current state
+*  A flag to show if active stories associated with the Portfolio Item exist if the portfolio item is not in the In-Progress or Staging state
 
+###Notes
+This app depends on specific Portfolio Item States existing.  To use this app for another purpose, update the rule
+
+### App Settings
+Portfolio Item Type - By default this is Initiative.
+Query - By Default this is looking at all portfolio items that changed state in the last 30 days.
 
 
 ## Development Notes

@@ -101,21 +101,29 @@ Ext.define("initiative-team-allocation", {
     getColumnCfgs: function(){
         var me = this;
         return [{
-            dataIndex: 'FormattedID'
+            dataIndex: 'FormattedID',
+            flex: 1
         },{
-            dataIndex: 'Name'
+            dataIndex: 'Name',
+            flex: 4
         },{
             dataIndex: '__projectAllocations',
             text: 'Line of Business',
-            renderer: me.lineOfBusinessRenderer
+            renderer: me.lineOfBusinessRenderer,
+            sortable: false,
+            flex: 3
         },{
             dataIndex: '__projectAllocations',
             text: 'Team Name',
-            renderer: me.teamNameRenderer
+            renderer: me.teamNameRenderer,
+            sortable: false,
+            flex: 3
         },{
             dataIndex: '__projectAllocations',
             text: 'Percent of Time Spent',
-            renderer: me.percentTimeRenderer
+            renderer: me.percentTimeRenderer,
+            sortable: false,
+            flex: 1
         }];
     },
     lineOfBusinessRenderer: function(v,m,r){
@@ -125,6 +133,11 @@ Ext.define("initiative-team-allocation", {
         return _.pluck(v,'teamName').join('<br/>');
     },
     percentTimeRenderer: function(v,m,r){
+        var tooltip = "<div style=\"text-transform:uppercase;color:#fff;font-family:NotoSansBold, Helvetica, Arial;font-size:10px;\"><span style=\"color:#337ec6;font-size:10px;\">" + r.get('FormattedID') + "</span> Percent of Time Spent</div> is the sum of the \"Active\" story points associated with the Initiative divided by the total sum of currently \"Active\" story points for the Team.  \"Active\" stories are those in a Schedule State of \"Defined\",\"In-Progress\" or \"Completed\".</br>";
+
+        Ext.Array.each(v, function(obj){
+            tooltip += Ext.String.format('</br><span style="font-family:NotoSansBold, Helvetica, Arial;">{0}</span>: {1} / {2} points', obj.teamName, Math.round(obj.thisTotal || 0), Math.round(obj.projectTotal || 0));
+        });
 
         var percents = [];
         Ext.Array.each(v, function(obj){
@@ -134,8 +147,9 @@ Ext.define("initiative-team-allocation", {
             }
             percents.push(pct);
         });
-        return percents.join('</br>');
 
+        //return percents.join('</br>');
+        return Ext.String.format('<div class="pct"><span class="tooltiptext">{1}</span>{0}</div>', percents.join('<br/>'),tooltip);
     },
     getStoryFilters: function(){
 
@@ -201,12 +215,13 @@ Ext.define("initiative-team-allocation", {
             success: this.processStories,
             failure: this.showErrorNotification,
             scope: this
-        }).always(function(){ this.setLoading(false); },this);
+        });
     },
     processStories: function(records){
         this.logger.log('processStories: fetchUserStories.success', records);
 
         if (!records || records.length === 0){
+            this.setLoading(false);
             return ;
         }
 
@@ -257,7 +272,7 @@ Ext.define("initiative-team-allocation", {
             limit: Infinity
         };
 
-        this.setLoading('Loading Project Allocation Data...');
+      //  this.setLoading('Loading Project Allocation Data...');
         CA.agile.technicalservices.Toolbox.fetchWsapiRecords(config).then({
             success: function(projectRecords){
                 this.logger.log('processStories:  fetchProjectRecords: ', projectRecords);
@@ -278,14 +293,20 @@ Ext.define("initiative-team-allocation", {
                 }
 
                 var initiatives = this.down('rallygrid').getStore().getRange();
+                this.down('rallygrid').suspendLayout = true;
+                this.down('rallygrid').getStore().suspendEvents(true);
                 for (var i=0; i<initiatives.length; i++){
                     initiatives[i].updateTeamInfo(hash[initiatives[i].get('ObjectID')], projectHash);
                 }
+                this.down('rallygrid').getStore().resumeEvents();
+                this.down('rallygrid').suspendLayout = false;
+                this.down('rallygrid').doLayout();
+
 
             },
             failure: this.showErrorNotification,
             scope: this
-        }).always(function(){ this.setLoading(false); },this);
+        }).always(function(){ this.setLoading(false); }, this);
 
     },
     getFilters: function(){

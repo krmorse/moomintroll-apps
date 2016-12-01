@@ -129,7 +129,6 @@ Ext.define("portfolio-movement", {
                 if (flag.flagRule(records[i])){
                     val = flag.flagValue(records[i]);
                 }
-               // var val = flag.flagRule(records[i]);
                 records[i].set(flag.dataIndex, val);
             });
         }
@@ -266,7 +265,7 @@ Ext.define("portfolio-movement", {
                 '{[this.formatFlag(values["' + flag.dataIndex + '"])]}',
                 {
                     formatFlag:function (value) {
-                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{1}</span><div class="icon-flag"></div><sub>{0}</sub></div>',value, flag.tooltip || flag.text) : '';
+                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{0}</span><div class="icon-flag"></div></div>',flag.tooltip || flag.text) : '';
                     }
                 }];
 
