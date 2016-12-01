@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Movement</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 01 2016 14:18:46 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Dec 01 2016 14:26:13 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 01 2016 14:18:46 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Thu Dec 01 2016 14:26:13 GMT-0700 (MST)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 20212373795;
+        var CHECKSUM = 20272751236;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -758,7 +758,8 @@ Ext.define("portfolio-movement", {
                 xtype: 'templatecolumn',
                 text: flag.text,
                 flex: 1,
-                tpl: templateConfig
+                tpl: templateConfig,
+                sortable: false
 
             });
         });
@@ -768,7 +769,8 @@ Ext.define("portfolio-movement", {
             xtype: 'templatecolumn',
             text: 'State Changed User',
             flex: 2,
-            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
+           sortable: false,
+        tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
         });
 
 
