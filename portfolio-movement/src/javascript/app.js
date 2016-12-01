@@ -275,7 +275,8 @@ Ext.define("portfolio-movement", {
                 xtype: 'templatecolumn',
                 text: flag.text,
                 flex: 1,
-                tpl: templateConfig
+                tpl: templateConfig,
+                sortable: false
 
             });
         });
@@ -285,7 +286,8 @@ Ext.define("portfolio-movement", {
             xtype: 'templatecolumn',
             text: 'State Changed User',
             flex: 2,
-            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
+           sortable: false,
+        tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
         });
 
 
