@@ -1,5 +1,9 @@
 #Initiative Team Allocation
 
+Shows blank if there is at least 1 active story, but no estimates.
+Shows 0.0% if there is at least 1 active story, but 0 points.  
+Percent Work Completed column shows "rounded" points.  
+
 ## Development Notes
 
 ### First Load

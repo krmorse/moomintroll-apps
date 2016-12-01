@@ -15,3 +15,20 @@
     margin-right: 5px;
     cursor: pointer;
 }
+.pct .tooltiptext {
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    margin-left: -300px;
+    font-family: NotoSans, Helvetica, Arial;
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+}
+.pct:hover .tooltiptext {
+    visibility: visible;
+}
