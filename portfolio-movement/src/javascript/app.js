@@ -17,15 +17,12 @@ Ext.define("portfolio-movement", {
             portfolioItemType: 'PortfolioItem/Initiative',
             flags: [{
                 flagRule: function(record){
-                    var flagStates = ['In-Progress','Staging'];
+                    var flagStates = ['Measuring','Done'];
                     var state = record.get('State') && record.get('State').Name;
-                    if (!Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
+                    if (Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
                             return true;
                         }
-                        //if (!record.get('ActualStartDate')){
-                        //    return true;
-                        //}
                     }
                     return false;
                 },
