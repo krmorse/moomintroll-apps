@@ -2,7 +2,7 @@
 
 <sub>uses Lookback API (LBAPI) and SDK 2.1</sub>
 
-Scenario: I want to see what Portfolio Items changed state in the last 30 days and who changed the State.  I also want to pay special attention to whether or not some items have active stories when we are not in the "In-Progress" or "Staging" Portfolio State.
+Scenario: I want to see what Portfolio Items changed state in the last 30 days and who changed the State.  I also want to pay special attention to whether or not some items have active stories when in the "Measuring" or "Done" Portfolio State.
 
 Displays the list of portfolio item Initiatives that moved status in the last 30 days (by default).  
 
@@ -23,7 +23,7 @@ If an item is in a "flagged state" and has active stories (Actual Start Date is 
 
 ####Additional (non-standard permanent columns):
 *  Who moved it into the current state
-*  A flag to show if active stories associated with the Portfolio Item exist if the portfolio item is not in the In-Progress or Staging state
+*  A flag to show if active stories associated with the Portfolio Item exist if the portfolio item is in the Measuring or Done state
 
 ###Notes
 This app depends on specific Portfolio Item States existing.  To use this app for another purpose, update the rule

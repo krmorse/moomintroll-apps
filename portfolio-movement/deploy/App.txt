@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Movement</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 01 2016 14:26:13 GMT-0700 (MST) -->
+    <!--  Build Date: Fri Dec 02 2016 07:57:09 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 01 2016 14:26:13 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Fri Dec 02 2016 07:57:09 GMT-0700 (MST)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 20272751236;
+        var CHECKSUM = 20162556665;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -500,15 +500,12 @@ Ext.define("portfolio-movement", {
             portfolioItemType: 'PortfolioItem/Initiative',
             flags: [{
                 flagRule: function(record){
-                    var flagStates = ['In-Progress','Staging'];
+                    var flagStates = ['Measuring','Done'];
                     var state = record.get('State') && record.get('State').Name;
-                    if (!Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
+                    if (Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
                             return true;
                         }
-                        //if (!record.get('ActualStartDate')){
-                        //    return true;
-                        //}
                     }
                     return false;
                 },
