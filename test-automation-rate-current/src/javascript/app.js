@@ -57,7 +57,11 @@ Ext.define("TSTestAutomationRateCurrent", {
     _calculateByTimebox: function(testcases_by_timebox){        
         if (Ext.isEmpty(testcases_by_timebox) ) { return; }
         
-        Ext.Object.each(testcases_by_timebox, function(index, timebox_hash){
+        var keys = Ext.Object.getKeys(testcases_by_timebox);
+        
+        Ext.Array.each(keys, function(key,idx) {
+            var timebox_hash = testcases_by_timebox[key];
+            
             var trend = 'N/A',
                 trend_value = -1,
                 start_count = 0,
@@ -70,30 +74,32 @@ Ext.define("TSTestAutomationRateCurrent", {
                 trend_value = ( (end_count-start_count) / start_count ) * 100 ;
                 trend = Ext.util.Format.number(trend_value, '0.#') + '%';
             }
-            timebox_hash = Ext.Object.merge(timebox_hash,{
+            Ext.Object.merge(timebox_hash,{
                 startCount: start_count,
                 endCount  : end_count,
                 trend     : trend,
                 trendValue: trend_value,
                 decorator : ''
             });
-        });
-        
-        if ( testcases_by_timebox[0] && testcases_by_timebox[1] ) {
-            console.log('--');
-            if ( Ext.isNumber(testcases_by_timebox[0].trendValue) ) {
-                console.log('++');
-                if ( Ext.isNumber(testcases_by_timebox[1].trendValue) ) {
-                    if ( testcases_by_timebox[0].trendValue > testcases_by_timebox[1].trendValue ) {
-                        testcases_by_timebox[0].decorator = '<span class="icon-up"> </span>';
-                    } else if ( testcases_by_timebox[0].trendValue < testcases_by_timebox[1].trendValue ) {
-                        testcases_by_timebox[0].decorator = '<span class="icon-down"> </span>';
+            
+            var preceding_key = idx+1;            
+            var preceding = testcases_by_timebox["" + preceding_key];
+            
+            if ( preceding ) {
+                if ( Ext.isNumber(timebox_hash.trendValue) && timebox_hash.trendValue > -1 ) {
+                    if ( Ext.isNumber(preceding.trendValue) && timebox_hash.trendValue > -1 ) {
+                        if ( timebox_hash.trendValue > preceding.trendValue ) {
+                            timebox_hash.decorator = '<span class="icon-up"> </span>';
+                        } else if ( timebox_hash.trendValue < preceding.trendValue ) {
+                            timebox_hash.decorator = '<span class="icon-down"> </span>';
+                        }
+                    } else {
+                        timebox_hash.decorator = '<span class="icon-up"> </span>';
                     }
-                } else {
-                    testcases_by_timebox[0].decorator = '<span class="icon-up"> </span>';
                 }
             }
-        }
+            
+        });
         
         return testcases_by_timebox;
     },
