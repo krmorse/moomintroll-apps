@@ -2,10 +2,24 @@
 
 ## Summary/Description
 
-![screenshot](./images/screenshot.png "This is an example")
+![screenshot](./images/screenshot.png "screenshot")
+
+
+This calculates the trending of the rate of automation change during a 
+timebox.  The admin can choose to show by release or iteration.  The 
+app then finds the number of test cases with method=Automated on the first 
+day and last day of every timebox.  The trend is calculated as:
+
+( ( current count - start count ) / start count ) x 100
+
+If the start count is zero, the app will show N/A.  
+
+![settings](./images/settings.png "Settings")
 
 ## Development Notes
 
+* this uses lookback
+* currently no limit on the number of timeboxes.  This could lead to a messy chart down the line.
 
 ### First Load
 
