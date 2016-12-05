@@ -3,13 +3,13 @@
 <head>
     <title>TS Test Automation Rate - Trend</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 05 2016 14:09:15 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 05 2016 14:48:15 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 05 2016 14:09:15 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 05 2016 14:48:15 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 8144268239;
+        var CHECKSUM = 8440194568;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -352,7 +352,8 @@ Ext.define("TSTestAutomationRateCurrent", {
             var value = timebox_hash.trendValue;
             data.push({
                 y: value,
-                yDisplay: timebox_hash.trend
+                yDisplay: timebox_hash.trend,
+                record: timebox_hash
             });
         }, this, true); // run in reverse
         
@@ -543,13 +544,25 @@ Ext.define("TSTestAutomationRateCurrent", {
     _getChartConfig: function() {
         return {
             chart: {
-                type: 'line'
+                type: 'line',
+                zoomType: 'xy'
             },
             title: {text: 'Rate of Automation'},
             subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
             tooltip: {
                 formatter: function() {
-                    return this.key + ': <b>' + this.point.yDisplay + '</b>';
+                    return Ext.String.format("<b>{0}</b><br/>Rate Change: <em>{1}</em><br/>Start: {2}<br/>End: {3}",
+                       this.key,
+                       this.point.yDisplay,
+                       this.point.record.startCount,
+                       this.point.record.endCount
+                    );
+                }
+            },
+            xAxis: {
+                labels: {
+                    rotation: -45,
+                    align: 'right'
                 }
             },
             yAxis: {
@@ -602,7 +615,8 @@ Ext.define("TSTestAutomationRateCurrent", {
                 if (operation.wasSuccessful()){
                     deferred.resolve(records);
                 } else {
-                    deferred.reject(operation.error.errors.join(','));
+                    console.error('operation:', operation);
+                    deferred.reject('Trouble loading lookback data');
                 }
             }
         });

@@ -71,7 +71,8 @@ Ext.define("TSTestAutomationRateCurrent", {
             var value = timebox_hash.trendValue;
             data.push({
                 y: value,
-                yDisplay: timebox_hash.trend
+                yDisplay: timebox_hash.trend,
+                record: timebox_hash
             });
         }, this, true); // run in reverse
         
@@ -262,13 +263,25 @@ Ext.define("TSTestAutomationRateCurrent", {
     _getChartConfig: function() {
         return {
             chart: {
-                type: 'line'
+                type: 'line',
+                zoomType: 'xy'
             },
             title: {text: 'Rate of Automation'},
             subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
             tooltip: {
                 formatter: function() {
-                    return this.key + ': <b>' + this.point.yDisplay + '</b>';
+                    return Ext.String.format("<b>{0}</b><br/>Rate Change: <em>{1}</em><br/>Start: {2}<br/>End: {3}",
+                       this.key,
+                       this.point.yDisplay,
+                       this.point.record.startCount,
+                       this.point.record.endCount
+                    );
+                }
+            },
+            xAxis: {
+                labels: {
+                    rotation: -45,
+                    align: 'right'
                 }
             },
             yAxis: {
@@ -321,7 +334,8 @@ Ext.define("TSTestAutomationRateCurrent", {
                 if (operation.wasSuccessful()){
                     deferred.resolve(records);
                 } else {
-                    deferred.reject(operation.error.errors.join(','));
+                    console.error('operation:', operation);
+                    deferred.reject('Trouble loading lookback data');
                 }
             }
         });
