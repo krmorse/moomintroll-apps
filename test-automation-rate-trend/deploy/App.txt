@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TS Test Automation Rate - Trend</title>
+    <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Mon Dec 05 2016 13:38:08 GMT-0800 (PST) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Mon Dec 05 2016 13:38:08 GMT-0800 (PST)";
+        var STORY    = "F166";
+        var BUILDER  = "jmartin";
+        var CHECKSUM = 7293899903;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+    <!-- our highcharts (needed so that we can add patterns) -->
+    <script type="text/javascript" src="/apps/2.1/lib/analytics/analytics-all.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+Ext.define('CA.agile.technicalservices.Colors', {
+    singleton: true,
+    
+    // base colors: 
+    pumpkin: '#FF671B', // darker orange
+    tangerine: '#F38B00', // lighter orange
+    turbo: '#FFC81F',  // off-yellow
+    limerick: '#8DB92E', // green
+
+    getBasicColors: function() {
+        return [this.pumpkin,this.tangerine,this.turbo,this.limerick];
+    },
+
+    /*
+     * repeat:  The number of times to repeat the basic array
+     *          0 will return the basic array, 1 will return 
+     *          the basic array and one repetition of the array
+     */
+    getRepeatedBasicColors: function(repeat) {
+        var color_array = [];
+        if ( Ext.isEmpty(repeat) ) { repeat = 0; }
+
+        for ( var i=0; i<repeat; i++ ) {
+            color_array = Ext.Array.push(color_array,this.getBasicColors());
+        }
+        return color_array;
+    }
+
+});
+
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER  = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            var build_html = Ext.String.format("Built on: {0} <br/>Built by: {1}",
+                APP_BUILD_DATE,
+                BUILDER);
+                
+            if ( STORY ) {
+                build_html = build_html + "<br/>Source story: " + STORY;
+            }
+                
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: build_html
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define("TSTestAutomationRateCurrent", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+
+    integrationHeaders : {
+        name : "TSTestAutomationRateCurrent"
+    },
+    
+    config: {
+        defaultSettings: {
+            timeboxType: 'Iteration'
+        }
+    },
+
+    launch: function() {
+        this.timeboxType = this.getSetting('timeboxType');
+        this._updateData();
+    },
+    
+    _updateData: function() {
+        this.setLoading(true);
+        var me = this;
+        
+        Deft.Chain.pipeline([
+            this._fetchBaseTimeboxes,
+            this._fetchTestCasesByTimebox,
+            this._calculateByTimebox
+        ],this).then({
+            success: function(testcases_by_timebox){
+                this._addChart(testcases_by_timebox);
+            },
+            
+            failure: function(msg){
+                Ext.Msg.alert('',msg);
+            },
+            
+            scope: this
+        }).always(function(){me.setLoading(false);});
+    },
+    
+    _setMessage: function(msg) {
+        this.removeAll();
+        this.add({xtype:'container',html:msg});
+    },
+    
+    _displayValues: function(testcases_by_timebox) {
+        this.logger.log('_displayValues', testcases_by_timebox);
+    },
+    
+    _addChart: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox)) { return; }
+        this.logger.log('_addChart', testcases_by_timebox);
+        
+        this.add({
+            xtype:'rallychart',
+            chartConfig: this._getChartConfig(),
+            chartData: this._prepareChartData(testcases_by_timebox),
+            chartColors: CA.agile.technicalservices.Colors.getBasicColors()
+        });
+    },
+    
+    _prepareChartData: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        this.logger.log('_prepareChartData', testcases_by_timebox);
+
+        var keys = Ext.Object.getKeys(testcases_by_timebox),
+            categories = [],
+            data = []; 
+        
+        Ext.Array.each(keys, function(key){
+            var timebox_hash = testcases_by_timebox[key];
+            categories.push(timebox_hash.name);
+            var value = timebox_hash.trendValue;
+            data.push(value);
+        }, this, true); // run in reverse
+        
+        var series = [{
+            name: 'Rate of Automation',
+            data: data
+        }];
+        this.logger.log('series',series);
+        
+        return {
+            series: series,
+            categories: categories
+        }
+    },
+    
+    _calculateByTimebox: function(testcases_by_timebox){        
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        
+        var keys = Ext.Object.getKeys(testcases_by_timebox);
+        
+        Ext.Array.each(keys, function(key,idx) {
+            var timebox_hash = testcases_by_timebox[key];
+            
+            var trend = 'N/A',
+                trend_value = null,
+                start_count = 0,
+                end_count = 0;
+            
+            if ( timebox_hash.start.length > 0 ) {
+                start_count = timebox_hash.start.length;
+                end_count   = timebox_hash.end.length;
+                
+                trend_value = ( (end_count-start_count) / start_count ) * 100 ;
+                trend = Ext.util.Format.number(trend_value, '0.#') + '%';
+            }
+            Ext.Object.merge(timebox_hash,{
+                startCount: start_count,
+                endCount  : end_count,
+                trend     : trend,
+                trendValue: trend_value,
+                decorator : ''
+            });
+            
+            var preceding_key = idx+1;
+            
+            var preceding = testcases_by_timebox["" + preceding_key];
+            
+            if ( preceding ) {
+                if ( Ext.isNumber(timebox_hash.trendValue) ) {
+                    if ( Ext.isNumber(preceding.trendValue) ) {
+                        if ( timebox_hash.trendValue > preceding.trendValue ) {
+                            timebox_hash.decorator = '<span class="icon-up"> </span>';
+                        } else if ( timebox_hash.trendValue < preceding.trendValue ) {
+                            timebox_hash.decorator = '<span class="icon-down"> </span>';
+                        }
+                    } else {
+                        timebox_hash.decorator = '<span class="icon-up"> </span>';
+                    }
+                }
+            }
+            
+        });
+        
+        return testcases_by_timebox;
+    },
+    
+    
+    _fetchBaseTimeboxes: function() {
+        var number_of_timeboxes = 2,
+            timebox_type = this.timeboxType;
+        
+        var filters = [
+            {property:this._getTimeboxStartField(timebox_type), operator: '<=', value: Rally.util.DateTime.toIsoString(new Date()) }
+        ];
+        
+        var config = {
+            model: timebox_type,
+            limit: Infinity, //number_of_timeboxes,
+            pageSize: 2000, //Math.min(number_of_timeboxes,2000),
+            context: {
+                projectScopeDown: false,
+                projectScopeUp: false
+            },
+            fetch: ['Name',this._getTimeboxStartField(timebox_type),this._getTimeboxEndField(timebox_type)],
+            filters: filters,
+            sorters: [{property:this._getTimeboxStartField(timebox_type), direction: 'DESC'}]
+        };
+        
+        return this._loadWsapiRecords(config);
+    },
+    
+    _fetchTestCasesByTimebox: function(timeboxes) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred');
+        this.logger.log('_fetchTestCasesByTimebox', timeboxes);
+        
+        if ( timeboxes.length == 0 ) {
+            this._setMessage(Ext.String.format("App must be run in a project with {0}s.", this.timeboxType));
+            return [];
+        }
+        var promises = [];
+        Ext.Array.each(timeboxes, function(timebox,idx){
+            promises.push(function() { return me._fetchStartAndEndTestCases(timebox,idx); });
+        });
+        
+        this.logger.log("Promise count: ", promises.length);
+        
+        Deft.Chain.sequence(promises).then({
+            success: function(results){
+                var testcases_by_timebox = {};
+                Ext.Array.each(results, function(result){
+                    testcases_by_timebox = Ext.Object.merge(testcases_by_timebox, result);
+                });
+                deferred.resolve(testcases_by_timebox);
+            }, 
+            failure: function(msg) { 
+                deferred.reject(msg); 
+            },
+            scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
+    _fetchStartAndEndTestCases: function(timebox,idx) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred'),
+            timebox_type = this.timeboxType,
+            timebox_name = timebox.get('Name'),
+            start_date = timebox.get(this._getTimeboxStartField(timebox_type)),
+            end_date   = timebox.get(this._getTimeboxEndField(timebox_type));
+        
+        var promises = [
+            function() { return me._fetchTestCasesAt(start_date); },
+            function() { return me._fetchTestCasesAt(end_date); }
+        ];
+        
+        Deft.Chain.sequence(promises).then({
+            success: function(testcases){
+                this.logger.log('test cases:', testcases);
+                var testcases_by_timebox = {};
+                testcases_by_timebox[idx] = {
+                    name: timebox_name,
+                    start: testcases[0],
+                    end  : testcases[1]
+                };
+                
+                deferred.resolve(testcases_by_timebox);
+            }, 
+            failure: function(msg) { 
+                deferred.reject(msg); 
+            },
+            scope: this
+        });
+        return deferred.promise;
+    },
+    
+    _fetchTestCasesAt: function(check_date){
+        var config = {
+            find: {
+                "_TypeHierarchy": "TestCase",
+                "_ProjectHierarchy": this.getContext().getProject().ObjectID,
+                "__At": check_date,
+                "Method": "Automated"
+            }
+        };
+        
+        return this._loadLookbackRecords(config);
+    },
+    
+    _getTimeboxStartField: function(timebox_type) {
+        var fields = {
+            'iteration': 'StartDate',
+            'release': 'ReleaseStartDate'
+        };
+        
+        return fields[timebox_type.toLowerCase()];
+    },
+    
+    _getTimeboxEndField: function(timebox) {
+        var fields = {
+            'iteration': 'EndDate',
+            'release': 'ReleaseDate'
+        };
+        
+        return fields[timebox.toLowerCase()];
+    },
+      
+    _getChartConfig: function() {
+        return {
+            chart: {
+                type: 'line'
+            },
+            title: {text: 'Rate of Automation'},
+            subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
+            tooltip: {
+                headerFormat: '',
+                pointFormat: '{point.name}: <b>{point.y:.1f}%</b>'
+            },
+            yAxis: {
+                title: {
+                    text: 'Rate Change (%)'
+                }
+            },
+            plotOptions: {
+                line: {
+                    marker: {
+                        enabled: true
+                    }
+                }
+            }
+        };
+    },
+    
+    _loadWsapiRecords: function(config){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        var default_config = {
+            model: 'Defect',
+            fetch: ['ObjectID']
+        };
+        this.logger.log("Starting load:",config.model, config);
+        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    deferred.resolve(records);
+                } else {
+                    me.logger.log("Failed: ", operation);
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    _loadLookbackRecords: function(config) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        var default_config = {
+            removeUnauthorizedSnapshots: true
+        };
+        
+        var store_config = Ext.Object.merge(default_config, config);
+        
+        Ext.create('Rally.data.lookback.SnapshotStore',store_config).load({
+            callback: function(records, operation){
+                if (operation.wasSuccessful()){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(operation.error.errors.join(','));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    getSettingsFields: function() {
+        return [{
+            name: 'timeboxType',
+            xtype: 'combobox',
+            label: 'Timebox Type:',
+            labelWidth: 150,
+            queryMode: 'local',
+            displayField:'name',
+            valueField:'value',
+            store: Ext.create('Ext.data.Store',{
+                fields: ['name','value'],
+                data: [
+                    {name:'Iteration',value:'Iteration'},
+                    {name:'Release',value:'Release'}
+                ]   
+            })
+            
+        }]
+    },
+    
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    }
+});
+
+            
+               Rally.launchApp('TSTestAutomationRateCurrent', {
+                   name: 'TS Test Automation Rate - Trend'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
