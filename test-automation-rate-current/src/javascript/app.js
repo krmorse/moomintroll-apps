@@ -55,7 +55,7 @@ Ext.define("TSTestAutomationRateCurrent", {
      ),
     
     _calculateByTimebox: function(testcases_by_timebox){        
-        if (Ext.isEmpty(testcases_by_timebox) ) { return; }
+if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var keys = Ext.Object.getKeys(testcases_by_timebox);
         
@@ -63,7 +63,7 @@ Ext.define("TSTestAutomationRateCurrent", {
             var timebox_hash = testcases_by_timebox[key];
             
             var trend = 'N/A',
-                trend_value = -1,
+                trend_value = null,
                 start_count = 0,
                 end_count = 0;
             
@@ -82,12 +82,13 @@ Ext.define("TSTestAutomationRateCurrent", {
                 decorator : ''
             });
             
-            var preceding_key = idx+1;            
+            var preceding_key = idx+1;
+            
             var preceding = testcases_by_timebox["" + preceding_key];
             
             if ( preceding ) {
-                if ( Ext.isNumber(timebox_hash.trendValue) && timebox_hash.trendValue > -1 ) {
-                    if ( Ext.isNumber(preceding.trendValue) && timebox_hash.trendValue > -1 ) {
+                if ( Ext.isNumber(timebox_hash.trendValue) ) {
+                    if ( Ext.isNumber(preceding.trendValue) ) {
                         if ( timebox_hash.trendValue > preceding.trendValue ) {
                             timebox_hash.decorator = '<span class="icon-up"> </span>';
                         } else if ( timebox_hash.trendValue < preceding.trendValue ) {

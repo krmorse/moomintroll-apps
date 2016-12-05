@@ -3,13 +3,13 @@
 <head>
     <title>TS Test Automation Rate - Current</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 05 2016 12:31:35 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 05 2016 13:32:28 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 05 2016 12:31:35 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 05 2016 13:32:28 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 5786641206;
+        var CHECKSUM = 5754638741;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -269,7 +269,7 @@ Ext.define("TSTestAutomationRateCurrent", {
      ),
     
     _calculateByTimebox: function(testcases_by_timebox){        
-        if (Ext.isEmpty(testcases_by_timebox) ) { return; }
+if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var keys = Ext.Object.getKeys(testcases_by_timebox);
         
@@ -277,7 +277,7 @@ Ext.define("TSTestAutomationRateCurrent", {
             var timebox_hash = testcases_by_timebox[key];
             
             var trend = 'N/A',
-                trend_value = -1,
+                trend_value = null,
                 start_count = 0,
                 end_count = 0;
             
@@ -296,12 +296,13 @@ Ext.define("TSTestAutomationRateCurrent", {
                 decorator : ''
             });
             
-            var preceding_key = idx+1;            
+            var preceding_key = idx+1;
+            
             var preceding = testcases_by_timebox["" + preceding_key];
             
             if ( preceding ) {
-                if ( Ext.isNumber(timebox_hash.trendValue) && timebox_hash.trendValue > -1 ) {
-                    if ( Ext.isNumber(preceding.trendValue) && timebox_hash.trendValue > -1 ) {
+                if ( Ext.isNumber(timebox_hash.trendValue) ) {
+                    if ( Ext.isNumber(preceding.trendValue) ) {
                         if ( timebox_hash.trendValue > preceding.trendValue ) {
                             timebox_hash.decorator = '<span class="icon-up"> </span>';
                         } else if ( timebox_hash.trendValue < preceding.trendValue ) {
