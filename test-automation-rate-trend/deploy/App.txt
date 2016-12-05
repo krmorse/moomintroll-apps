@@ -3,13 +3,13 @@
 <head>
     <title>TS Test Automation Rate - Trend</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 05 2016 13:38:08 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 05 2016 13:51:48 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 05 2016 13:38:08 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 05 2016 13:51:48 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 7293899903;
+        var CHECKSUM = 7289137364;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -289,10 +289,6 @@ Ext.define("TSTestAutomationRateCurrent", {
         this.add({xtype:'container',html:msg});
     },
     
-    _displayValues: function(testcases_by_timebox) {
-        this.logger.log('_displayValues', testcases_by_timebox);
-    },
-    
     _addChart: function(testcases_by_timebox) {
         if (Ext.isEmpty(testcases_by_timebox)) { return; }
         this.logger.log('_addChart', testcases_by_timebox);
@@ -317,7 +313,10 @@ Ext.define("TSTestAutomationRateCurrent", {
             var timebox_hash = testcases_by_timebox[key];
             categories.push(timebox_hash.name);
             var value = timebox_hash.trendValue;
-            data.push(value);
+            data.push({
+                y: value,
+                yDisplay: timebox_hash.trend
+            });
         }, this, true); // run in reverse
         
         var series = [{
@@ -513,8 +512,11 @@ Ext.define("TSTestAutomationRateCurrent", {
             title: {text: 'Rate of Automation'},
             subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
             tooltip: {
-                headerFormat: '',
-                pointFormat: '{point.name}: <b>{point.y:.1f}%</b>'
+                formatter: function() {
+                    return this.key + ': <b>' + this.point.yDisplay + '%</b>';
+                }
+//                headerFormat: '',
+//                pointFormat: '{point.x}: <b>{point.y:.1f}%</b>'
             },
             yAxis: {
                 title: {

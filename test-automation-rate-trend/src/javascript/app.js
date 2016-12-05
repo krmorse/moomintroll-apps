@@ -45,10 +45,6 @@ Ext.define("TSTestAutomationRateCurrent", {
         this.add({xtype:'container',html:msg});
     },
     
-    _displayValues: function(testcases_by_timebox) {
-        this.logger.log('_displayValues', testcases_by_timebox);
-    },
-    
     _addChart: function(testcases_by_timebox) {
         if (Ext.isEmpty(testcases_by_timebox)) { return; }
         this.logger.log('_addChart', testcases_by_timebox);
@@ -73,7 +69,10 @@ Ext.define("TSTestAutomationRateCurrent", {
             var timebox_hash = testcases_by_timebox[key];
             categories.push(timebox_hash.name);
             var value = timebox_hash.trendValue;
-            data.push(value);
+            data.push({
+                y: value,
+                yDisplay: timebox_hash.trend
+            });
         }, this, true); // run in reverse
         
         var series = [{
@@ -269,8 +268,11 @@ Ext.define("TSTestAutomationRateCurrent", {
             title: {text: 'Rate of Automation'},
             subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
             tooltip: {
-                headerFormat: '',
-                pointFormat: '{point.name}: <b>{point.y:.1f}%</b>'
+                formatter: function() {
+                    return this.key + ': <b>' + this.point.yDisplay + '</b>';
+                }
+//                headerFormat: '',
+//                pointFormat: '{point.x}: <b>{point.y:.1f}%</b>'
             },
             yAxis: {
                 title: {
