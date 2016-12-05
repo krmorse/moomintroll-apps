@@ -3,13 +3,13 @@
 <head>
     <title>TS Test Automation Rate - Trend</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 05 2016 13:51:48 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 05 2016 14:09:15 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 05 2016 13:51:48 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 05 2016 14:09:15 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 7289137364;
+        var CHECKSUM = 8144268239;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -19,6 +19,43 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('CA.agile.technicalservices.promise.ParallelThrottle',{
+    requires: ['Deft.promise.Promise'],
+    statics: {
+
+        throttle: function (fns, maxParallelCalls, scope) {
+            
+            if (maxParallelCalls <= 0 || fns.length < maxParallelCalls){
+                return Deft.promise.Chain.parallel(fns, scope);
+            }
+
+            var parallelFns = [],
+                fnChunks = [],
+                idx = -1;
+
+            for (var i = 0; i < fns.length; i++) {
+                if (i % maxParallelCalls === 0) {
+                    idx++;
+                    fnChunks[idx] = [];
+                }
+                fnChunks[idx].push(fns[i]);
+            }
+
+            _.each(fnChunks, function (chunk) {
+                parallelFns.push(function () {
+                    return Deft.promise.Chain.parallel(chunk, scope);
+                });
+            });
+
+            return Deft.Promise.reduce(parallelFns, function(groupResults, fnGroup) {
+                return Deft.Promise.when(fnGroup.call(scope)).then(function(results) {
+                    groupResults = groupResults.concat(results || []);
+                    return groupResults;
+                });
+            }, []);
+        }
+    }
+});
 Ext.define('CA.agile.technicalservices.Colors', {
     singleton: true,
     
@@ -382,7 +419,6 @@ Ext.define("TSTestAutomationRateCurrent", {
         return testcases_by_timebox;
     },
     
-    
     _fetchBaseTimeboxes: function() {
         var number_of_timeboxes = 2,
             timebox_type = this.timeboxType;
@@ -423,7 +459,7 @@ Ext.define("TSTestAutomationRateCurrent", {
         
         this.logger.log("Promise count: ", promises.length);
         
-        Deft.Chain.sequence(promises).then({
+        CA.agile.technicalservices.promise.ParallelThrottle.throttle(promises,9,this).then({
             success: function(results){
                 var testcases_by_timebox = {};
                 Ext.Array.each(results, function(result){
@@ -513,10 +549,8 @@ Ext.define("TSTestAutomationRateCurrent", {
             subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
             tooltip: {
                 formatter: function() {
-                    return this.key + ': <b>' + this.point.yDisplay + '%</b>';
+                    return this.key + ': <b>' + this.point.yDisplay + '</b>';
                 }
-//                headerFormat: '',
-//                pointFormat: '{point.x}: <b>{point.y:.1f}%</b>'
             },
             yAxis: {
                 title: {

@@ -138,7 +138,6 @@ Ext.define("TSTestAutomationRateCurrent", {
         return testcases_by_timebox;
     },
     
-    
     _fetchBaseTimeboxes: function() {
         var number_of_timeboxes = 2,
             timebox_type = this.timeboxType;
@@ -179,7 +178,7 @@ Ext.define("TSTestAutomationRateCurrent", {
         
         this.logger.log("Promise count: ", promises.length);
         
-        Deft.Chain.sequence(promises).then({
+        CA.agile.technicalservices.promise.ParallelThrottle.throttle(promises,9,this).then({
             success: function(results){
                 var testcases_by_timebox = {};
                 Ext.Array.each(results, function(result){
@@ -271,8 +270,6 @@ Ext.define("TSTestAutomationRateCurrent", {
                 formatter: function() {
                     return this.key + ': <b>' + this.point.yDisplay + '</b>';
                 }
-//                headerFormat: '',
-//                pointFormat: '{point.x}: <b>{point.y:.1f}%</b>'
             },
             yAxis: {
                 title: {
