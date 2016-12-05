@@ -1,0 +1,31 @@
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+
+div.tc_big_ratio {
+    text-align: center;
+}
+
+span.tc_big_text {
+    font-size: 98px;
+}
+
+div.tc_summary {
+    color: DimGrey;
+    text-align: center;
+}
