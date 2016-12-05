@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Portfolio Movement</title>
+    <title>Initiative Team Allocation</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Dec 02 2016 07:57:09 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Dec 01 2016 13:43:59 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Dec 02 2016 07:57:09 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Thu Dec 01 2016 13:43:59 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -16,8 +16,8 @@
         Rally.onReady(function() {
             
             
-               Rally.launchApp('portfolio-movement', {
-                   name: 'Portfolio Movement'
+               Rally.launchApp('initiative-team-allocation', {
+                   name: 'Initiative Team Allocation'
                });
         });
     </script>
@@ -41,21 +41,7 @@
     margin-right: 5px;
     cursor: pointer;
 }
-
-.flagged {
-    text-align: center;
-    font-size: 16px;
-    color: #EE1C25;
-}
-
-sub {
-    font-family: NotoSans, Helvetica, Arial;
-    color: #333;
-    font-size: 9px!important;
-    vertical-align: sub;
-}
-
-.flagged .tooltiptext {
+.pct .tooltiptext {
     visibility: hidden;
     background-color: black;
     color: #fff;
@@ -63,12 +49,13 @@ sub {
     border-radius: 6px;
     padding: 10px;
     font-size: 11px;
+    margin-left: -300px;
     font-family: NotoSans, Helvetica, Arial;
     /* Position the tooltip */
     position: absolute;
     z-index: 1;
 }
-.flagged:hover .tooltiptext {
+.pct:hover .tooltiptext {
     visibility: visible;
 }
     </style>

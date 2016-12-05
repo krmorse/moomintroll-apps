@@ -3,12 +3,12 @@
 <head>
     <title>Portfolio Movement</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Nov 30 2016 09:08:38 GMT-0700 (MST) -->
+    <!--  Build Date: Fri Dec 02 2016 07:57:09 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Nov 30 2016 09:08:38 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Fri Dec 02 2016 07:57:09 GMT-0700 (MST)";
         var BUILDER = "kcorkan";
-        var CHECKSUM = 20309010784;
+        var CHECKSUM = 20162556665;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -500,13 +500,10 @@ Ext.define("portfolio-movement", {
             portfolioItemType: 'PortfolioItem/Initiative',
             flags: [{
                 flagRule: function(record){
-                    var flagStates = ['In-Progress','Staging'];
+                    var flagStates = ['Measuring','Done'];
                     var state = record.get('State') && record.get('State').Name;
-                    if (!Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
+                    if (Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
-                            return true;
-                        }
-                        if (!record.get('ActualStartDate')){
                             return true;
                         }
                     }
@@ -612,7 +609,6 @@ Ext.define("portfolio-movement", {
                 if (flag.flagRule(records[i])){
                     val = flag.flagValue(records[i]);
                 }
-               // var val = flag.flagRule(records[i]);
                 records[i].set(flag.dataIndex, val);
             });
         }
@@ -749,7 +745,7 @@ Ext.define("portfolio-movement", {
                 '{[this.formatFlag(values["' + flag.dataIndex + '"])]}',
                 {
                     formatFlag:function (value) {
-                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{1}</span><div class="icon-flag"></div><sub>{0}</sub></div>',value, flag.tooltip || flag.text) : '';
+                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{0}</span><div class="icon-flag"></div></div>',flag.tooltip || flag.text) : '';
                     }
                 }];
 
@@ -759,7 +755,8 @@ Ext.define("portfolio-movement", {
                 xtype: 'templatecolumn',
                 text: flag.text,
                 flex: 1,
-                tpl: templateConfig
+                tpl: templateConfig,
+                sortable: false
 
             });
         });
@@ -769,7 +766,8 @@ Ext.define("portfolio-movement", {
             xtype: 'templatecolumn',
             text: 'State Changed User',
             flex: 2,
-            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
+           sortable: false,
+        tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
         });
 
 

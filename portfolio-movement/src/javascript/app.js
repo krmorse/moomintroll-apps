@@ -17,13 +17,10 @@ Ext.define("portfolio-movement", {
             portfolioItemType: 'PortfolioItem/Initiative',
             flags: [{
                 flagRule: function(record){
-                    var flagStates = ['In-Progress','Staging'];
+                    var flagStates = ['Measuring','Done'];
                     var state = record.get('State') && record.get('State').Name;
-                    if (!Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
+                    if (Ext.Array.contains(flagStates, state) && record.get('LeafStoryCount') > 0){
                         if (record.get('ActualStartDate') && !record.get('ActualEndDate')){
-                            return true;
-                        }
-                        if (!record.get('ActualStartDate')){
                             return true;
                         }
                     }
@@ -129,7 +126,6 @@ Ext.define("portfolio-movement", {
                 if (flag.flagRule(records[i])){
                     val = flag.flagValue(records[i]);
                 }
-               // var val = flag.flagRule(records[i]);
                 records[i].set(flag.dataIndex, val);
             });
         }
@@ -266,7 +262,7 @@ Ext.define("portfolio-movement", {
                 '{[this.formatFlag(values["' + flag.dataIndex + '"])]}',
                 {
                     formatFlag:function (value) {
-                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{1}</span><div class="icon-flag"></div><sub>{0}</sub></div>',value, flag.tooltip || flag.text) : '';
+                        return (value) ? Ext.String.format('<div class="flagged"><span class="tooltiptext">{0}</span><div class="icon-flag"></div></div>',flag.tooltip || flag.text) : '';
                     }
                 }];
 
@@ -276,7 +272,8 @@ Ext.define("portfolio-movement", {
                 xtype: 'templatecolumn',
                 text: flag.text,
                 flex: 1,
-                tpl: templateConfig
+                tpl: templateConfig,
+                sortable: false
 
             });
         });
@@ -286,7 +283,8 @@ Ext.define("portfolio-movement", {
             xtype: 'templatecolumn',
             text: 'State Changed User',
             flex: 2,
-            tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
+           sortable: false,
+        tpl:  '<div>{[values.__lastUserToChangeState && values.__lastUserToChangeState._refObjectName]}</div>'
         });
 
 

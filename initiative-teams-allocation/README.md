@@ -1,37 +1,27 @@
-#Portfolio Movement
+#Initiative Team Allocation
 
-<sub>uses Lookback API (LBAPI) and SDK 2.1</sub>
+App to show how much time a leaf node team is spending on an initiative at the current time.  
 
-Scenario: I want to see what Portfolio Items changed state in the last 30 days and who changed the State.  I also want to pay special attention to whether or not some items have active stories when in the "Measuring" or "Done" Portfolio State.
+![ScreenShot](/images/initiative-team-allocation.png)
 
-Displays the list of portfolio item Initiatives that moved status in the last 30 days (by default).  
+For each Initiative shown:
+*  Line of Business - This is the third level project associated with the Team working on the initiative
+*  Team Name - This is the leaf node team working on the initiative 
+*  Percent of Time Spent - This is the percent of time that the Team is currently spending on the initiative.  
 
-Special attention should be paid to items in selected states.  
+The Percent of Time Spent is calculated by the sum of all "Active" story points associated with the initiative that the Team is working on divided by the total sum of all "Active" story points that the Team is currently working on.  
 
-If an item is in a "flagged state" and has active stories (Actual Start Date is populated, Actual End Date is not populated and Leaf Story Count > 0) assigned to it, it will be flagged as a problem.  
+An "Active" story is a leaf node (e.g. no children) story that is currently in a state of "Defined", "In-Progress" or "Completed".  
 
-![ScreenShot](/images/portfolio-movement.png)
+Initiatives can be filtered using the advanced filter component.  
 
-###The grid will show: 
+Notes:
 
-####Selected standard columns.  By default these include:
-*  Portfolio ID (Always Selected) - Will be flagged 
-*  Portfolio Name (Always Selected) 
-*  Portfolio Release
-*  Portfolio Owner
-*  %Complete based on Story Points
-
-####Additional (non-standard permanent columns):
-*  Who moved it into the current state
-*  A flag to show if active stories associated with the Portfolio Item exist if the portfolio item is in the Measuring or Done state
-
-###Notes
-This app depends on specific Portfolio Item States existing.  To use this app for another purpose, update the rule
-
-### App Settings
-Portfolio Item Type - By default this is Initiative.
-Query - By Default this is looking at all portfolio items that changed state in the last 30 days.
-
+*  Shows blank if there is at least 1 active story, but no estimates.
+*  Shows 0.0% if there is at least 1 active story, but 0 points.  
+*  Percent Work Completed column shows "rounded" points.  
+*  This app does not follow the project scope for fetching stories so data will only be displayed if the user has access to it.  
+*  This app assumes that there is at least 3 levels of project hierarchy
 
 ## Development Notes
 

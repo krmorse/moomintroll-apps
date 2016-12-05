@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initiative Team Allocation</title>
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Dec 01 2016 13:43:58 GMT-0700 (MST)";
+    </script>
+    
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.1/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            Rally.loadScripts(["src/javascript/utils/__ts-info-link.js","src/javascript/utils/__ts-logger.js","src/javascript/utils/extended-model-builder.js","src/javascript/utils/project-tree.js","src/javascript/utils/toolbox.js","src/javascript/app.js"],
+	            function() {
+	                Rally.launchApp('initiative-team-allocation', {
+	                    name: 'Initiative Team Allocation'
+	                })
+	            }, true);
+        });
+    </script>
+<link rel="stylesheet" type="text/css" href="src/style/app.css">
+
+</head>
+<body></body>
+</html>
