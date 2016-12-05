@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TS Test Automation Rate - Current</title>
+    <title>TS Test Automation Rate - Trend</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 05 2016 13:32:28 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 05 2016 14:48:15 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 05 2016 13:32:28 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 05 2016 14:48:15 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 5754638741;
+        var CHECKSUM = 8440194568;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -19,6 +19,73 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('CA.agile.technicalservices.promise.ParallelThrottle',{
+    requires: ['Deft.promise.Promise'],
+    statics: {
+
+        throttle: function (fns, maxParallelCalls, scope) {
+            
+            if (maxParallelCalls <= 0 || fns.length < maxParallelCalls){
+                return Deft.promise.Chain.parallel(fns, scope);
+            }
+
+            var parallelFns = [],
+                fnChunks = [],
+                idx = -1;
+
+            for (var i = 0; i < fns.length; i++) {
+                if (i % maxParallelCalls === 0) {
+                    idx++;
+                    fnChunks[idx] = [];
+                }
+                fnChunks[idx].push(fns[i]);
+            }
+
+            _.each(fnChunks, function (chunk) {
+                parallelFns.push(function () {
+                    return Deft.promise.Chain.parallel(chunk, scope);
+                });
+            });
+
+            return Deft.Promise.reduce(parallelFns, function(groupResults, fnGroup) {
+                return Deft.Promise.when(fnGroup.call(scope)).then(function(results) {
+                    groupResults = groupResults.concat(results || []);
+                    return groupResults;
+                });
+            }, []);
+        }
+    }
+});
+Ext.define('CA.agile.technicalservices.Colors', {
+    singleton: true,
+    
+    // base colors: 
+    pumpkin: '#FF671B', // darker orange
+    tangerine: '#F38B00', // lighter orange
+    turbo: '#FFC81F',  // off-yellow
+    limerick: '#8DB92E', // green
+
+    getBasicColors: function() {
+        return [this.pumpkin,this.tangerine,this.turbo,this.limerick];
+    },
+
+    /*
+     * repeat:  The number of times to repeat the basic array
+     *          0 will return the basic array, 1 will return 
+     *          the basic array and one repetition of the array
+     */
+    getRepeatedBasicColors: function(repeat) {
+        var color_array = [];
+        if ( Ext.isEmpty(repeat) ) { repeat = 0; }
+
+        for ( var i=0; i<repeat; i++ ) {
+            color_array = Ext.Array.push(color_array,this.getBasicColors());
+        }
+        return color_array;
+    }
+
+});
+
 /**
  * A link that pops up a version dialog box
  */
@@ -227,7 +294,7 @@ Ext.define("TSTestAutomationRateCurrent", {
             timeboxType: 'Iteration'
         }
     },
-                        
+
     launch: function() {
         this.timeboxType = this.getSetting('timeboxType');
         this._updateData();
@@ -240,12 +307,17 @@ Ext.define("TSTestAutomationRateCurrent", {
         Deft.Chain.pipeline([
             this._fetchBaseTimeboxes,
             this._fetchTestCasesByTimebox,
-            this._calculateByTimebox,
-            this._displayValues
+            this._calculateByTimebox
         ],this).then({
+            success: function(testcases_by_timebox){
+                this._addChart(testcases_by_timebox);
+            },
+            
             failure: function(msg){
                 Ext.Msg.alert('',msg);
-            }
+            },
+            
+            scope: this
         }).always(function(){me.setLoading(false);});
     },
     
@@ -254,22 +326,51 @@ Ext.define("TSTestAutomationRateCurrent", {
         this.add({xtype:'container',html:msg});
     },
     
-    _displayValues: function(testcases_by_timebox) {
-        this.logger.log('_displayValues', testcases_by_timebox);
-        if ( Ext.isEmpty(testcases_by_timebox) ) {
-            return;
-        }
-        this.update(testcases_by_timebox[0]);
+    _addChart: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox)) { return; }
+        this.logger.log('_addChart', testcases_by_timebox);
+        
+        this.add({
+            xtype:'rallychart',
+            chartConfig: this._getChartConfig(),
+            chartData: this._prepareChartData(testcases_by_timebox),
+            chartColors: CA.agile.technicalservices.Colors.getBasicColors()
+        });
     },
     
-    tpl: Ext.create('Ext.XTemplate', 
-        '<div class="tc_big_ratio"><span class="tc_big_text">{trend}</span> <span class="tc_decorator">{decorator}</span></div>',
-        '<div class="tc_summary">Test Cases automated during {name} </div>',
-        '<div class="tc_summary">(start:{startCount} - end:{endCount})</div>'
-     ),
+    _prepareChartData: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        this.logger.log('_prepareChartData', testcases_by_timebox);
+
+        var keys = Ext.Object.getKeys(testcases_by_timebox),
+            categories = [],
+            data = []; 
+        
+        Ext.Array.each(keys, function(key){
+            var timebox_hash = testcases_by_timebox[key];
+            categories.push(timebox_hash.name);
+            var value = timebox_hash.trendValue;
+            data.push({
+                y: value,
+                yDisplay: timebox_hash.trend,
+                record: timebox_hash
+            });
+        }, this, true); // run in reverse
+        
+        var series = [{
+            name: 'Rate of Automation',
+            data: data
+        }];
+        this.logger.log('series',series);
+        
+        return {
+            series: series,
+            categories: categories
+        }
+    },
     
     _calculateByTimebox: function(testcases_by_timebox){        
-if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var keys = Ext.Object.getKeys(testcases_by_timebox);
         
@@ -329,8 +430,8 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var config = {
             model: timebox_type,
-            limit: number_of_timeboxes,
-            pageSize: Math.min(number_of_timeboxes,2000),
+            limit: Infinity, //number_of_timeboxes,
+            pageSize: 2000, //Math.min(number_of_timeboxes,2000),
             context: {
                 projectScopeDown: false,
                 projectScopeUp: false
@@ -359,7 +460,7 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         this.logger.log("Promise count: ", promises.length);
         
-        Deft.Chain.sequence(promises).then({
+        CA.agile.technicalservices.promise.ParallelThrottle.throttle(promises,9,this).then({
             success: function(results){
                 var testcases_by_timebox = {};
                 Ext.Array.each(results, function(result){
@@ -440,6 +541,45 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         return fields[timebox.toLowerCase()];
     },
       
+    _getChartConfig: function() {
+        return {
+            chart: {
+                type: 'line',
+                zoomType: 'xy'
+            },
+            title: {text: 'Rate of Automation'},
+            subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
+            tooltip: {
+                formatter: function() {
+                    return Ext.String.format("<b>{0}</b><br/>Rate Change: <em>{1}</em><br/>Start: {2}<br/>End: {3}",
+                       this.key,
+                       this.point.yDisplay,
+                       this.point.record.startCount,
+                       this.point.record.endCount
+                    );
+                }
+            },
+            xAxis: {
+                labels: {
+                    rotation: -45,
+                    align: 'right'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Rate Change (%)'
+                }
+            },
+            plotOptions: {
+                line: {
+                    marker: {
+                        enabled: true
+                    }
+                }
+            }
+        };
+    },
+    
     _loadWsapiRecords: function(config){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
@@ -475,7 +615,8 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
                 if (operation.wasSuccessful()){
                     deferred.resolve(records);
                 } else {
-                    deferred.reject(operation.error.errors.join(','));
+                    console.error('operation:', operation);
+                    deferred.reject('Trouble loading lookback data');
                 }
             }
         });
@@ -520,12 +661,11 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     }
-    
 });
 
             
                Rally.launchApp('TSTestAutomationRateCurrent', {
-                   name: 'TS Test Automation Rate - Current'
+                   name: 'TS Test Automation Rate - Trend'
                });
         });
     </script>
@@ -548,20 +688,6 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
-}
-
-
-div.tc_big_ratio {
-    text-align: center;
-}
-
-span.tc_big_text {
-    font-size: 98px;
-}
-
-div.tc_summary {
-    color: DimGrey;
-    text-align: center;
 }
     </style>
 

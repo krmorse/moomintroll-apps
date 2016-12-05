@@ -1,0 +1,13 @@
+{
+    "name": "TS Test Automation Rate - Trend",
+    "sdk": "2.1",
+    "className": "TSTestAutomationRateCurrent",
+    "story": "F166",
+    "javascript": [
+        "../common/src/javascript/parallel-throttle.js",
+        "../common/src/javascript/colors.js",
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "src/javascript/app.js"
+    ]
+}

@@ -13,7 +13,7 @@ Ext.define("TSTestAutomationRateCurrent", {
             timeboxType: 'Iteration'
         }
     },
-                        
+
     launch: function() {
         this.timeboxType = this.getSetting('timeboxType');
         this._updateData();
@@ -26,12 +26,17 @@ Ext.define("TSTestAutomationRateCurrent", {
         Deft.Chain.pipeline([
             this._fetchBaseTimeboxes,
             this._fetchTestCasesByTimebox,
-            this._calculateByTimebox,
-            this._displayValues
+            this._calculateByTimebox
         ],this).then({
+            success: function(testcases_by_timebox){
+                this._addChart(testcases_by_timebox);
+            },
+            
             failure: function(msg){
                 Ext.Msg.alert('',msg);
-            }
+            },
+            
+            scope: this
         }).always(function(){me.setLoading(false);});
     },
     
@@ -40,22 +45,51 @@ Ext.define("TSTestAutomationRateCurrent", {
         this.add({xtype:'container',html:msg});
     },
     
-    _displayValues: function(testcases_by_timebox) {
-        this.logger.log('_displayValues', testcases_by_timebox);
-        if ( Ext.isEmpty(testcases_by_timebox) ) {
-            return;
-        }
-        this.update(testcases_by_timebox[0]);
+    _addChart: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox)) { return; }
+        this.logger.log('_addChart', testcases_by_timebox);
+        
+        this.add({
+            xtype:'rallychart',
+            chartConfig: this._getChartConfig(),
+            chartData: this._prepareChartData(testcases_by_timebox),
+            chartColors: CA.agile.technicalservices.Colors.getBasicColors()
+        });
     },
     
-    tpl: Ext.create('Ext.XTemplate', 
-        '<div class="tc_big_ratio"><span class="tc_big_text">{trend}</span> <span class="tc_decorator">{decorator}</span></div>',
-        '<div class="tc_summary">Test Cases automated during {name} </div>',
-        '<div class="tc_summary">(start:{startCount} - end:{endCount})</div>'
-     ),
+    _prepareChartData: function(testcases_by_timebox) {
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        this.logger.log('_prepareChartData', testcases_by_timebox);
+
+        var keys = Ext.Object.getKeys(testcases_by_timebox),
+            categories = [],
+            data = []; 
+        
+        Ext.Array.each(keys, function(key){
+            var timebox_hash = testcases_by_timebox[key];
+            categories.push(timebox_hash.name);
+            var value = timebox_hash.trendValue;
+            data.push({
+                y: value,
+                yDisplay: timebox_hash.trend,
+                record: timebox_hash
+            });
+        }, this, true); // run in reverse
+        
+        var series = [{
+            name: 'Rate of Automation',
+            data: data
+        }];
+        this.logger.log('series',series);
+        
+        return {
+            series: series,
+            categories: categories
+        }
+    },
     
     _calculateByTimebox: function(testcases_by_timebox){        
-if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
+        if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var keys = Ext.Object.getKeys(testcases_by_timebox);
         
@@ -115,8 +149,8 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         var config = {
             model: timebox_type,
-            limit: number_of_timeboxes,
-            pageSize: Math.min(number_of_timeboxes,2000),
+            limit: Infinity, //number_of_timeboxes,
+            pageSize: 2000, //Math.min(number_of_timeboxes,2000),
             context: {
                 projectScopeDown: false,
                 projectScopeUp: false
@@ -145,7 +179,7 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         
         this.logger.log("Promise count: ", promises.length);
         
-        Deft.Chain.sequence(promises).then({
+        CA.agile.technicalservices.promise.ParallelThrottle.throttle(promises,9,this).then({
             success: function(results){
                 var testcases_by_timebox = {};
                 Ext.Array.each(results, function(result){
@@ -226,6 +260,45 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
         return fields[timebox.toLowerCase()];
     },
       
+    _getChartConfig: function() {
+        return {
+            chart: {
+                type: 'line',
+                zoomType: 'xy'
+            },
+            title: {text: 'Rate of Automation'},
+            subtitle: { text: Ext.String.format("(by {0})", this.timeboxType) },
+            tooltip: {
+                formatter: function() {
+                    return Ext.String.format("<b>{0}</b><br/>Rate Change: <em>{1}</em><br/>Start: {2}<br/>End: {3}",
+                       this.key,
+                       this.point.yDisplay,
+                       this.point.record.startCount,
+                       this.point.record.endCount
+                    );
+                }
+            },
+            xAxis: {
+                labels: {
+                    rotation: -45,
+                    align: 'right'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Rate Change (%)'
+                }
+            },
+            plotOptions: {
+                line: {
+                    marker: {
+                        enabled: true
+                    }
+                }
+            }
+        };
+    },
+    
     _loadWsapiRecords: function(config){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
@@ -261,7 +334,8 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
                 if (operation.wasSuccessful()){
                     deferred.resolve(records);
                 } else {
-                    deferred.reject(operation.error.errors.join(','));
+                    console.error('operation:', operation);
+                    deferred.reject('Trouble loading lookback data');
                 }
             }
         });
@@ -306,5 +380,4 @@ if (Ext.isEmpty(testcases_by_timebox) ) { return testcases_by_timebox; }
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     }
-    
 });
