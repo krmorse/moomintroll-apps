@@ -18,11 +18,9 @@ Ext.define("questionaire", {
 
         }
     },
-
     surveyDriver: null,
 
     launch: function() {
-
         Ext.create('CA.agile.technicalservices.SurveyDriver',{
             listeners: {
                 ready: this.initializeApp,

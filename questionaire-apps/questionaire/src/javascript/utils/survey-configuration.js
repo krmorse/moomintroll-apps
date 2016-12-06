@@ -5,33 +5,87 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
     filters: [],
 
     title: 'Financial Survey',
-    instructions: null,
 
-    //startQuestions: ['animals', 'cars'],
     startContainer: 'things',
 
-    questionMap: {
+    panels: {
         things: {
-            animals: {
-                cats: {
-                    "maine-coon": null,
-                    tabby: null,
-                    persian: null
-                },
-                dogs: {
-                    poodles: null,
-                    goldenRetrievers: null,
-                    mutts: null
-                },
-                birds: {
-                    "blue-jay": null,
-                    cardinal: null,
-                    oriole: null
+            key: 'things',
+            type: 'choice',
+            text: 'Please select your favorite kind of thing:',
+            options: [{
+                text: 'I like animals',
+                nextKey: 'animals'
+            },{
+                text: 'I like cars',
+                nextKey: 'cars'
+            }],
+            value: null
+        },
+        animals: {
+            key: 'animals',
+            text: 'Please select your favorite kind of animal',
+            type: 'choice',
+            options: [{
+                text: 'I like dogs',
+                nextKey: 'dogs'
+            },{
+                text: 'I like cats',
+                nextKey: 'cats',
+                updates: {
+                    Name: 'I picked cats'
                 }
-            },
-            cars: {
-                carDescription: null
+            },{
+                text: 'I like birds',
+                nextKey: 'birds',
+                updates: {
+                    Name: 'I picked birds'
+                }
+            }],
+            value: null
+        },
+        cars: {
+            key: 'cars',
+            text: 'Please describe your ideal car',
+            type: 'description',
+            field: 'Description',
+            value: null,
+            nextKey: 'carColor',
+            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel.",
+            updates: {
+                Description: '{value}',
+                Name: 'I picked cars'
             }
+        },
+        carColor: {
+            key: 'carColor',
+            text: 'what color would your ideal car be?',
+            type: 'description',
+            field: 'Notes',
+            value: null,
+            nextKey: null,
+            updates: {
+                Notes: '{value}'
+            }
+        },
+        dogs: {
+            text: 'Please select your favorite kind of dog',
+            type: 'choice',
+            key: 'dogs',
+            options: [{
+                text: 'I like mutts',
+                nextKey: 'mutts',
+                updates: {
+                    Name: 'I like mutts'
+                }
+            },{
+                text: 'I like poodles',
+                nextKey: 'poodles',
+                updates: {
+                    Name: 'I like poodles'
+                }
+            }],
+            value: null
         }
     },
 
@@ -44,12 +98,11 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
         },
         carDescription:{
             question: 'Please describe your ideal car',
-            exampleValue: 'Expected Description:<br/><br/>I like vintage airstream campers.' ,
-            updates: [{
-                field: 'Description',
-                value: '{value}'
-            }],
+            updates:{
+                Description: '{value}'
+            },
             field: 'Description',
+            exampleValue: 'Expected Description:<br/><br/>I like vintage airstream campers.' ,
             key: 'carDescription'
 
         },
@@ -101,7 +154,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
             question: 'I like birds',
             childInstructions: 'Please select your favorite kind of bird',
             childType: 'surveycontainerradio',
-            children: ['blue-jays','cardinals','orioles'],
+            children: ['blue-jay','cardinal','oriole'],
             key: 'birds',
             updates: {
                 Name: "I like birds",

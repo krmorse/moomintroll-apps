@@ -13,7 +13,8 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
     hideCollapseTool: true,
     collapsible: true,
     collapsed: false,
-    height: 500,
+    height: 400,
+    width: '100%',
     collapseDirection: 'right',
     headerPosition: 'left',
     header: true,
@@ -42,15 +43,16 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
             flex: 1,
             layout: 'hbox',
             items: [{
-                xtype: 'rallybutton',
-                cls: 'detail-collapse-button icon-leave',
-                width: 18,
-                margin: '0 10 0 25',
-                userAction: 'Close (X) filter panel clicked',
-                listeners: {
-                    click: this.close
-                }
-            },{
+            //    xtype: 'rallybutton',
+            //    cls: 'detail-collapse-button icon-leave',
+            //    width: 18,
+            //    margin: '0 10 0 25',
+            //    userAction: 'Close (X) filter panel clicked',
+            //    listeners: {
+            //        click: this.close,
+            //        scope: this
+            //    }
+            //},{
                 xtype: 'container',
                 flex: 1,
                 itemId: 'panelTitle',
@@ -72,14 +74,12 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
 
     constructor: function(config){
         this.mergeConfig(config);
-        console.log('config', config, this.config);
 
         this.survey = Ext.create('CA.agile.technicalservices.Survey',config.surveyConfig);
         this.survey.setRecord(this.record);
 
         this.callParent([this.config]);
     },
-
     initComponent: function() {
 
         this.callParent(arguments);
@@ -100,6 +100,19 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         this.down('#footer').add([
             {
                 xtype: 'rallybutton',
+               // cls: 'detail-collapse-button icon-leave',
+                text: 'Cancel',
+                float: 'left',
+                cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
+                handler: this.close,
+                scope: this
+
+            },{
+                xtype: 'container',
+                flex: 1
+            },{
+
+                xtype: 'rallybutton',
                 text: this.previousText,
                 itemId: 'backButton',
                 disabled: true,
@@ -114,14 +127,17 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
                 cls: ['commentActionButton', 'commentSave', 'primary', 'rly-small'],
                 handler: this._nextQuestion,
                 scope: this
-            },
-            {
+            },{
+                xtype: 'container',
+                flex: 1
+            },{
                 xtype: 'rallybutton',
                 itemId: 'submitButton',
                 text: this.submitText,
                 cls: ['commentActionButton', 'commentSave', 'primary', 'rly-small'],
                 handler: this._submit,
                 scope: this,
+                float: 'right',
                 visible: false
             }
         ]);
@@ -133,10 +149,12 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
     },
     _submit: function(){
 
-        if (!this.getQuestionCt().validate()){
+
+        if (!this._getSurveyContainer().validate()){
             return;
         }
-        this.survey.submit(this.getQuestionCt().getKey(),this.getQuestionCt().getValue()).then({
+
+         this.survey.submit(this._getSurveyContainer().getValue()).then({
             success: function(record){
                 this.fireEvent('submit', record);
             },
@@ -146,43 +164,50 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
             scope: this
         }).always(function(){ this.close(); }, this);
     },
-    _nextQuestion: function(btn){
-
-        if (!this.getQuestionCt().validate()){
+    _nextQuestion: function(){
+        if (!this._getSurveyContainer().validate()){
             return;
         }
-        var containerCfg = this.survey.getNextContainerConfig(this.getQuestionCt().getKey(), this.getQuestionCt().getValue());
-
-        this.down('#backButton').setDisabled(this.survey.isFirstButton());
-        this.down('#submitButton').setVisible(!containerCfg.hasChildren);
-        this.down('#nextButton').setDisabled(!containerCfg.hasChildren);
-
-        this._updateQuestion(containerCfg);
-
+        this.survey.setValue(this._getSurveyContainer().getValue());
+        var cfg = this.survey.getPanelCfg(this._getSurveyContainer().getNextPanelKey());
+        this._updatePanel(cfg);
     },
     _previousQuestion: function(){
-        var containerCfg = this.survey.getPreviousContainerConfig(this.getQuestionCt().getKey(), this.getQuestionCt().getValue());
-        this._updateQuestion(containerCfg);
+
+        var cfg = this.survey.getPreviousPanelCfg();
+        this._updatePanel(cfg);
     },
     _initializeSurvey: function(){
         if(!this.rendered){
             this.on('afterrender', this._initializeSurvey, this);
             return;
         }
-        var cfg = this.survey.getInitialContainerConfig();
-        this._updateQuestion(cfg);
-    },
-    getQuestionCt: function(){
-        return this.down('#questionCt');
-    },
-    _updateQuestion: function(questionConfig){
-
-        this.logger.log('_updateQuestion, cfg', questionConfig);
-        if (this.getQuestionCt()){ this.getQuestionCt().destroy(); }
-        this.add(questionConfig);
+        var cfg = this.survey.getPanelCfg();
+        this._updatePanel(cfg);
     },
     close: function(){
         this.survey.destroy();
         this.destroy();
+    },
+    _getSurveyContainer: function(){
+        return this.down('surveycontainer');
+    },
+    _updatePanel: function(panelCfg){
+        if (this._getSurveyContainer()){ this._getSurveyContainer().destroy(); }
+
+        var ct = this.add({
+            xtype: 'surveycontainer',
+            surveyContainerCfg: panelCfg,
+            record: this.record
+        });
+        ct.on('choiceupdated', this._updateButtons, this);
+        this._updateButtons();
+    },
+    _updateButtons: function(choiceValue){
+        var isLast = this.survey.isLast(choiceValue);
+
+        this.down('#backButton').setDisabled(this.survey.isFirst());
+        this.down('#submitButton').setVisible(isLast);
+        this.down('#nextButton').setDisabled(isLast);
     }
 });
