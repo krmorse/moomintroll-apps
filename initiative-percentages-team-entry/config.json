@@ -1,0 +1,13 @@
+{
+    "name": "TS Initiative Percentage Entry",
+    "sdk": "2.1",
+    "className": "TSInitiativePercentageEntry",
+    "story": "F166",
+    "javascript": [
+        "../common/src/javascript/wsapi-utilities.js",
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "src/javascript/utils/_ts-initiative-model.js",
+        "src/javascript/app.js"
+    ]
+}

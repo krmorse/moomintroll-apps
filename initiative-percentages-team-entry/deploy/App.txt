@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TS Initiative Percentage Entry</title>
+    <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Thu Dec 08 2016 09:13:24 GMT-0800 (PST) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Dec 08 2016 09:13:24 GMT-0800 (PST)";
+        var STORY    = "F166";
+        var BUILDER  = "jmartin";
+        var CHECKSUM = 10999546565;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk-debug.js"></script>
+    <!-- our highcharts (needed so that we can add patterns) -->
+    <script type="text/javascript" src="/apps/2.1/lib/analytics/analytics-all.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+Ext.define('CA.agile.technicalservices.util.WsapiUtils',{
+    singleton: true,
+    
+    // given a store config, loads the records while returning a promise
+    loadWsapiRecords: function(config) {
+        var deferred = Ext.create('Deft.Deferred');
+        var default_config = {
+            autoLoad: true
+        };
+        var store_config = Ext.Object.merge(default_config, config);
+
+        Ext.create('Rally.data.wsapi.Store',store_config).load({
+            callback: function(records, operation){
+                if (operation.wasSuccessful()){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(operation.error.errors.join(','));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    // given a store config, loads the records while returning a promise
+    loadSnapshotRecords: function(config) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        var default_config = {
+            removeUnauthorizedSnapshots: true
+        };
+        
+        var store_config = Ext.Object.merge(default_config, config);
+        
+        Ext.create('Rally.data.lookback.SnapshotStore',store_config).load({
+            callback: function(records, operation){
+                if (operation.wasSuccessful()){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(operation.error.errors.join(','));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    getPortfolioItemTypes: function(workspace) {
+        var deferred = Ext.create('Deft.Deferred');
+                
+        var store_config = {
+            fetch: ['Name','ElementName','TypePath'],
+            model: 'TypeDefinition',
+            filters: [
+                {
+                    property: 'TypePath',
+                    operator: 'contains',
+                    value: 'PortfolioItem/'
+                }
+            ],
+            sorters: [ {property:'Ordinal', direction: 'ASC'}],
+            autoLoad: true,
+            listeners: {
+                load: function(store, records, successful) {
+                    if (successful){
+                        deferred.resolve(records);
+                    } else {
+                        deferred.reject('Failed to load types');
+                    }
+                }
+            }
+        };
+        
+        if ( !Ext.isEmpty(workspace) ) {
+            store_config.context = { 
+                project:null,
+                workspace: workspace._ref ? workspace._ref : workspace.get('_ref')
+            };
+        }
+                
+        var store = Ext.create('Rally.data.wsapi.Store', store_config );
+                    
+        return deferred.promise;
+    },
+    
+    loadWsapiRecordsParallel: function(store_config){
+        var deferred = Ext.create('Deft.Deferred'),
+            promises = [],
+            thread_count = 9,
+            me = this;
+
+        var config = Ext.Object.merge({
+            pageSize: 2000
+        },store_config);
+        
+        config.autoLoad = false;
+        config.limit    = config.pageSize;
+        
+        this.fetchWsapiCount(store_config).then({
+            success: function(totalCount){
+                var store = Ext.create('Rally.data.wsapi.Store', config),
+                    totalPages = Math.ceil(totalCount/config.pageSize);
+
+                var pages = _.range(1,totalPages+1,1);
+
+                _.each(pages, function(page){
+                    promises.push(function () {
+                        return me.loadStorePage(page, store);
+                    });
+                });
+
+                PortfolioItemCostTracking.promise.ParallelThrottle.throttle(promises, thread_count, me).then({
+                    success: function(results){
+                        deferred.resolve(_.flatten(results));
+                    },
+                    failure: function(msg){
+                        deferred.reject(Ext.String.format("Parallel Load Problem:", msg));
+                    }
+                });
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            }
+        });
+        return deferred;
+    },
+    
+    fetchWsapiCount: function(store_config){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var config = Ext.Object.merge(store_config, {
+            fetch: ['ObjectID'],
+            limit: 1,
+            pageSize: 1
+        });
+        
+        Ext.create('Rally.data.wsapi.Store',config).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(operation.resultSet.totalRecords);
+                } else {
+                    deferred.reject(Ext.String.format("Count Problem: {1}", operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    },
+    
+    loadStorePage: function(pageNum, store){
+        var deferred = Ext.create('Deft.Deferred');
+        
+        store.loadPage(pageNum, {
+            callback: function(records, operation){
+                
+                if (operation.wasSuccessful()){
+                     deferred.resolve(records);
+                } else {
+                    console.error('Operation:', operation);
+                    var msg = operation.error && operation.error.errors.join(',');
+                    if ( Ext.isEmpty(msg) ) {
+                        deferred.reject('Network issue while loading store page');
+                    } else {
+                        deferred.reject(msg + " (lsp)");
+                    }
+                }
+            }
+        });
+
+        return deferred;
+    },
+    
+    fetchAllowedValues: function(model_name, field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+        console.log(model_name, field_name);
+        
+        Rally.data.ModelFactory.getModel({
+            type: model_name,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(allowed_values, operation, success) {
+                        deferred.resolve(Ext.Array.map(allowed_values, function(allowed_value){
+                            return allowed_value.get('StringValue');
+                        }));
+                    }
+                });
+            }
+        });
+        return deferred.promise;
+    }
+    
+});
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER  = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            var build_html = Ext.String.format("Built on: {0} <br/>Built by: {1}",
+                APP_BUILD_DATE,
+                BUILDER);
+                
+            if ( STORY ) {
+                build_html = build_html + "<br/>Source story: " + STORY;
+            }
+                
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: build_html
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('TSModel',{
+    extend: 'Ext.data.Model',
+    
+    fields: [
+        { name: '_ref', type: 'string' },
+        { name: '_refObjectName', type: 'string' },
+        { name: 'Name', type: 'string' },
+        { name: 'ObjectID', type: 'int' },
+        { name: 'FormattedID', type: 'string' },
+        { name: '__percentage', type: 'float', defaultValue: 0 }
+    ],
+    
+    save: function() {
+        return;
+    }
+});
+Ext.override(Rally.ui.grid.plugin.Validation,{
+    _onBeforeEdit: function(editor, object, eOpts) {
+        // clear this because it won't let us do the getEditor on cells
+    }
+});
+
+Ext.define("TSInitiativePercentageEntry", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+    items: [
+        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'display_box'}
+    ],
+
+    integrationHeaders : {
+        name : "TSInitiativePercentageEntry"
+    },
+                        
+    launch: function() {
+        var me = this;
+//        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
+//        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
+//        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
+        
+        CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
+            success: function(pis) {
+                this.PortfolioItemTypes = pis;
+                this._addSelectors();
+            },
+            scope: this
+        });
+    },
+    
+    _addSelectors: function() {
+        var me = this;
+        var container = this.getSelectorBox();
+        var project_filter = [{property:'Children.ObjectID',value:''}];
+        
+        project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
+        
+        var project_config = {
+            model:'Project',
+            filters: project_filter,
+            pageSize: 2000,
+            sorters: [{property:'Name'}]
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(project_config).then({
+            success: function(projects) {
+                if ( projects.length === 0 ) {
+                    this._showAppMessage("You must own at least one project to use this app.");
+                    return;
+                }
+                
+                if ( projects.length == 1 ) {
+                    container.add({
+                        xtype:'container',
+                        html: Ext.String.format("<b>Team:</b> {0}",
+                            projects[0].get('_refObjectName')
+                        )
+                    });
+                    
+                    this.selectedProject = projects[0].get('_ref');
+                    this._updateData();
+                    return;
+                }
+                
+                var project_data = Ext.Array.map(projects, function(project){return project.getData();});
+                
+                container.add({
+                    xtype:'combo',
+                    store: Ext.create('Ext.data.Store',{
+                        fields: ['_refObjectName','ObjectID','_ref'],
+                        data: project_data
+                    }),
+                    fieldLabel: 'Team',
+                    labelWidth: 45,
+                    displayField: '_refObjectName',
+                    valueField: '_ref',
+                    typeAhead: true,
+                    queryMode: 'local'
+                }).on(
+                    'change', 
+                    function(cb) {
+                        this.selectedProject = cb.getValue();
+                        this._updateData();
+                    }, 
+                    me
+                );
+            },
+            scope: this
+        });
+    },
+    
+    _updateData: function() {
+        this._clearDisplayBox();
+       
+        if ( Ext.isEmpty(this.selectedProject) ) {
+            return;
+        }
+        this.logger.log('_updateData',this.selectedProject);
+        
+        var project_ref = this.selectedProject;
+        
+        Deft.Chain.pipeline([
+            function() { return this._fetchActiveStoryHierarchies(project_ref); },
+            this._fetchInitiativesFromHierarchies
+        ],this).then({
+            success: function(initiatives) {
+                this.logger.log('success', initiatives);
+                
+                var models = Ext.Array.map(initiatives, function(initiative) {
+                    return initiative.getData();
+                });
+                
+                this.displayGrid(models);
+            },
+            failure: function(msg) {
+                
+                if ( Ext.isString(msg) ) {
+                    this.showErrorNotification( msg );
+                    return;
+                }
+                if ( Ext.isObject(msg) && !Ext.isEmpty(msg.msg) ) {
+                    this._showAppMessage(msg.msg);
+                }
+            },
+            scope: this
+        });
+    },
+    
+    _fetchActiveStoryHierarchies: function(project_ref) {
+        var deferred = Ext.create('Deft.Deferred'),
+            project_oid = Rally.util.Ref.getOidFromRef(project_ref);
+        
+        // TODO: figure out month
+        var month = "November";
+        
+        var config = {
+            find: {
+                _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
+                Project: project_oid,
+                "$or": [
+                {
+                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
+                    "_PreviousValues.ScheduleState": { "$exists": true },
+                    "_ValidFrom": {
+                        "$gte": "2016-11-01",
+                        "$lt": "2016-12-01"
+                    }
+                },
+                {
+                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
+                    __At: 'current'
+                }
+                ]
+            },
+            fetch: ['ObjectID','_ItemHierarchy']
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            success: function(snapshots) {
+                if ( snapshots.length === 0 ) {
+                    deferred.reject({msg: 'There were no active stories in the month for this project.'});
+                    return;
+                }
+                var hierarchies = {};
+                
+                Ext.Array.map(snapshots, function(snapshot){
+                    hierarchies[snapshot.get('ObjectID')] = snapshot.get('_ItemHierarchy');
+                });
+                
+                deferred.resolve( Ext.Object.getValues(hierarchies) );
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _fetchInitiativesFromHierarchies: function(hierarchies) {
+        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
+
+        var oids = [];
+        Ext.Array.each(hierarchies, function(hierarchy){
+            hierarchy.pop();
+            oids = Ext.Array.push(oids,hierarchy);
+        });
+        
+        oids = Ext.Array.unique(oids);
+        var filters = Ext.Array.map(oids, function(oid){
+            return { property:'ObjectID',value:oid }
+        });
+        
+        var config = {
+            model: this.PortfolioItemTypes[1].get('TypePath'),
+            filters: Rally.data.wsapi.Filter.or(filters),
+            fetch: ['FormattedID','Name','Notes'],
+            enablePostGet: true
+        };
+        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    displayGrid: function(initiatives) {
+        this.logger.log('displayGrid', initiatives);
+        
+        var store = Ext.create('Rally.data.custom.Store',{
+            model:'TSModel',
+            data: initiatives
+        });
+        
+        this._clearDisplayBox();
+        
+        var display_box = this.getDisplayBox();
+        
+        display_box.add({
+            xtype:'rallygrid',
+            width: 400,
+            columnCfgs: this._getColumns(),
+            store: store,
+            showPagingToolbar : false,
+            showRowActionsColumn : false,
+            disableSelection: true,
+            enableColumnMove: false,
+            enableColumnResize : false,
+            features: [{
+                ftype: 'summary',
+                dock: 'bottom'
+            }]
+        });
+    },
+    
+    _getColumns: function() {
+        return [
+            { dataIndex:'FormattedID', text: 'ID' },
+            { dataIndex:'Name',text:'Name', flex: 1},
+            { 
+                dataIndex:'__percentage', 
+                text: 'Percentage', 
+                width: 100,
+                align: 'center',
+                sortable: true,
+                field:'test',
+                getEditor: function(record,df) {
+                    return Ext.create('Ext.grid.CellEditor', {
+                        field: Ext.create('Rally.ui.NumberField', {
+                            xtype:'rallynumberfield',
+                            minValue: 0,
+                            maxValue: 100,
+                            disabled: false,
+                            selectOnFocus: true,
+                            validator: function(value) {
+                                value = value || 0;
+                                
+                                var grid = this.up('rallygrid'),
+                                    store = grid && grid.getStore();
+                                
+                                if ( !store ) {
+                                    return true;
+                                }
+                                
+                                var count = store.getTotalCount();
+                                var total = 0;
+                                
+                                // get the values in the store
+                                for ( var i=0; i<count; i++ ) {
+                                    var record = store.getAt(i);
+                                    var row_value = record.get('__percentage') || 0;
+                                    total = total + row_value;
+                                }
+                                console.log('total before:', total);
+                                // adjust for change (original value is already 
+                                // in the store so the loop above pulled it, but we
+                                // want to replace it with the new value
+                                var original_value = this.originalValue || 0;
+                                
+                                total = total - original_value + parseFloat(value,10);
+                                console.log("new total:", total);
+                                
+                                if ( total > 100) {
+                                    return "The total (" + total + ") is greater than 100%";
+                                }
+                                return true;
+                            }
+                        })
+                    });
+                },
+                summaryType: 'sum',
+                renderer: function(value,meta,record) {
+                    if ( value === 0 ) {
+                        return "";
+                    } 
+                    return value + '%';
+                }
+            }
+        ];
+    },
+    
+    getSelectorBox: function() {
+        return this.down('#selector_box');
+    },
+    
+    getDisplayBox: function() {
+        return this.down('#display_box');
+    },
+    
+    getLowestLevelPITypePath: function() {
+        return this.PortfolioItemTypes[0].get('TypePath');
+    },
+    
+    _showAppMessage: function(msg){
+        var display_box = this.getDisplayBox();
+        display_box.removeAll();
+        
+        var ct = display_box.add({
+            xtype: 'container',
+            tpl: '<div class="no-data-container"><div class="secondary-message">{message}</div></div>'
+        });
+        ct.update({message: msg});
+    },
+    
+    _clearDisplayBox: function() {
+        var display_box = this.getDisplayBox();
+        display_box.removeAll();
+    },
+    
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    }
+    
+});
+
+            
+               Rally.launchApp('TSInitiativePercentageEntry', {
+                   name: 'TS Initiative Percentage Entry'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
