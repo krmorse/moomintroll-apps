@@ -21,7 +21,8 @@ Ext.define("TSInitiativePercentageEntry", {
     config: {
         defaultSettings: {
             validBeforeMonthEnd: 5,
-            validAfterMonthEnd: 10
+            validAfterMonthEnd: 10,
+            query: '(c_Capitalizable = true)'
         }
     },
     
@@ -221,14 +222,21 @@ Ext.define("TSInitiativePercentageEntry", {
         });
         
         oids = Ext.Array.unique(oids);
-        var filters = Ext.Array.map(oids, function(oid){
-            return { property:'ObjectID',value:oid }
-        });
+        var filters = Rally.data.wsapi.Filter.or(
+            Ext.Array.map(oids, function(oid){
+                return { property:'ObjectID',value:oid }
+            })
+        );
+        
+        var base_filter = this.getBaseInitiativeFilter();
+        if ( !Ext.isEmpty(base_filter) ) {
+            filters = filters.and(base_filter);
+        }
         
         var config = {
             model: this.PortfolioItemTypes[1].get('TypePath'),
-            filters: Rally.data.wsapi.Filter.or(filters),
-            fetch: ['FormattedID','Name','Notes'],
+            filters: filters,
+            fetch: ['FormattedID','Name','Notes','Description'],
             enablePostGet: true
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
@@ -265,7 +273,14 @@ Ext.define("TSInitiativePercentageEntry", {
     
     _getColumns: function() {
         return [
-            { dataIndex:'FormattedID', text: 'ID' },
+            { 
+                text: 'Full Name',       
+                xtype: 'templatecolumn', 
+                tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate',{
+                    showIcon: false,
+                    showHover: true
+                })
+            },
             { dataIndex:'Name',text:'Name', flex: 1},
             { 
                 dataIndex:'__percentage', 
@@ -355,6 +370,13 @@ Ext.define("TSInitiativePercentageEntry", {
         display_box.removeAll();
     },
     
+    getBaseInitiativeFilter: function() {
+        if (this.getSetting('query')){
+            return Rally.data.wsapi.Filter.fromQueryString(this.getSetting('query'));
+        }
+        return null;
+    },
+    
     getSettingsFields: function() {
         return [
             { 
@@ -371,6 +393,35 @@ Ext.define("TSInitiativePercentageEntry", {
                 minValue: 0,
                 maxValue: 14
             },
+            {
+                xtype: 'textarea',
+                fieldLabel: 'Query',
+                labelAlign: 'right',
+//                labelWidth: labelWidth,
+                name: 'query',
+                anchor: '100%',
+                cls: 'query-field',
+                margin: '25 70 0 0',
+                plugins: [
+                    {
+                        ptype: 'rallyhelpfield',
+                        helpId: 194
+                    },
+                    'rallyfieldvalidationui'
+                ],
+                validateOnBlur: false,
+                validateOnChange: false,
+                validator: function(value) {
+                    try {
+                        if (value) {
+                            Rally.data.wsapi.Filter.fromQueryString(value);
+                        }
+                        return true;
+                    } catch (e) {
+                        return e.message;
+                    }
+                }
+            }
         ];
     },
     
