@@ -10,20 +10,37 @@ Ext.define("TSInitiativePercentageEntry", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'selector_box',layout: 'hbox', defaults: { margin: 10 }},
         {xtype:'container',itemId:'display_box'}
     ],
 
     integrationHeaders : {
         name : "TSInitiativePercentageEntry"
     },
-                        
+    
+    config: {
+        defaultSettings: {
+            validBeforeMonthEnd: 5,
+            validAfterMonthEnd: 10
+        }
+    },
+    
     launch: function() {
         var me = this;
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
         
+        var before = this.getSetting('validBeforeMonthEnd'),
+            after  = this.getSetting('validAfterMonthEnd');
+        
+        this.monthNameForEntry = TSDateCalculator.getMonthNameInLimits(new Date(), before, after);
+        this.monthIsoForEntry = TSDateCalculator.getMonthIsoInLimits(new Date(), before, after);
+
+        if ( Ext.isEmpty(this.monthNameForEntry) ) {
+            this._showAppMessage("Entry during this period is closed.");
+            return;
+        }
         CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
             success: function(pis) {
                 this.PortfolioItemTypes = pis;
@@ -89,6 +106,13 @@ Ext.define("TSInitiativePercentageEntry", {
                     }, 
                     me
                 );
+                
+                container.add({
+                    xtype:'container',
+                    cls: 'month-name-display',
+                    html: this.monthNameForEntry
+                });
+        
             },
             scope: this
         });
@@ -135,8 +159,13 @@ Ext.define("TSInitiativePercentageEntry", {
         var deferred = Ext.create('Deft.Deferred'),
             project_oid = Rally.util.Ref.getOidFromRef(project_ref);
         
-        // TODO: figure out month
-        var month = "November";
+        var month_start = this.monthIsoForEntry;
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(month_start), 'month', 1
+            )
+        );
+        
         
         var config = {
             find: {
@@ -147,8 +176,8 @@ Ext.define("TSInitiativePercentageEntry", {
                     ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
                     "_PreviousValues.ScheduleState": { "$exists": true },
                     "_ValidFrom": {
-                        "$gte": "2016-11-01",
-                        "$lt": "2016-12-01"
+                        "$gte": month_start,
+                        "$lt":  next_month
                     }
                 },
                 {
@@ -272,14 +301,12 @@ Ext.define("TSInitiativePercentageEntry", {
                                     var row_value = record.get('__percentage') || 0;
                                     total = total + row_value;
                                 }
-                                console.log('total before:', total);
                                 // adjust for change (original value is already 
                                 // in the store so the loop above pulled it, but we
                                 // want to replace it with the new value
                                 var original_value = this.originalValue || 0;
                                 
                                 total = total - original_value + parseFloat(value,10);
-                                console.log("new total:", total);
                                 
                                 if ( total > 100) {
                                     return "The total (" + total + ") is greater than 100%";
@@ -326,6 +353,25 @@ Ext.define("TSInitiativePercentageEntry", {
     _clearDisplayBox: function() {
         var display_box = this.getDisplayBox();
         display_box.removeAll();
+    },
+    
+    getSettingsFields: function() {
+        return [
+            { 
+                xtype:'rallynumberfield',
+                name: 'validBeforeMonthEnd',
+                fieldLabel: 'Days Before Month End',
+                minValue: 0,
+                maxValue: 14
+            },
+            { 
+                xtype:'rallynumberfield',
+                name: 'validAfterMonthEnd',
+                fieldLabel: 'Days After Month End',
+                minValue: 0,
+                maxValue: 14
+            },
+        ];
     },
     
     getOptions: function() {

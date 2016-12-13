@@ -3,19 +3,21 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 08 2016 09:13:24 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 10:16:38 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 08 2016 09:13:24 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 10:16:38 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 10999546565;
+        var CHECKSUM = 14986576794;
     </script>
     
-    <script type="text/javascript" src="/apps/2.1/sdk-debug.js"></script>
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
     <!-- our highcharts (needed so that we can add patterns) -->
+    <!-- 
     <script type="text/javascript" src="/apps/2.1/lib/analytics/analytics-all.js"></script>
-
+    -->
+    
     <script type="text/javascript">
         Rally.onReady(function() {
              
@@ -401,6 +403,70 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.define('TSDateCalculator',{
+    singleton: true,
+    
+    // all of the first day counts as 1 day.  So December 1 at 5am is 1 day, so is 6pm.
+    getDaysAfterMonthEnd: function(check_date) {
+        var month = check_date.getMonth();
+        var year = check_date.getFullYear();
+        var month_end = new Date(year,month,1);
+        
+        return Rally.util.DateTime.getDifference(check_date,month_end,'day') + 1;
+    },
+    
+    // all of the last day counts as 1 day.  So December 31 at 5am is 1 day, so is 6pm.
+    getDaysBeforeMonthEnd: function(check_date) {
+        var month = check_date.getMonth();
+        var year = check_date.getFullYear();
+        var month_end = Rally.util.DateTime.add(new Date(year,month,1),'month',1);
+        
+        return Rally.util.DateTime.getDifference(month_end,check_date,'day') + 1;
+    },
+    
+    // given a date, and boundary limits for either side of a month end date, what's the
+    // month this date is in (if any)?
+    getMonthNameInLimits: function(check_date, before_limit, after_limit) {
+        var before_days = this.getDaysBeforeMonthEnd(check_date);
+        var after_days = this.getDaysAfterMonthEnd(check_date);
+        
+        if ( before_limit + after_limit >= 30 ) {
+            return null;
+        }
+        
+        if ( before_days <= before_limit ) {
+            return Ext.Date.format(check_date,'F');
+        }
+        
+        if ( after_days <= after_limit ) {
+            var last_month = Rally.util.DateTime.add(check_date,'month',-1);
+            return Ext.Date.format(last_month,'F');
+        }
+        
+        return null;
+    },
+    
+    getMonthIsoInLimits: function(check_date, before_limit, after_limit) {
+        var before_days = this.getDaysBeforeMonthEnd(check_date);
+        var after_days = this.getDaysAfterMonthEnd(check_date);
+        
+        if ( before_limit + after_limit >= 30 ) {
+            return null;
+        }
+        
+        if ( before_days <= before_limit ) {
+            return Ext.Date.format(check_date,'o-m-01');
+        }
+        
+        if ( after_days <= after_limit ) {
+            var last_month = Rally.util.DateTime.add(check_date,'month',-1);
+            return Ext.Date.format(last_month,'o-m-01');
+        }
+        
+        return null;
+    }
+
+});
 Ext.define('TSModel',{
     extend: 'Ext.data.Model',
     
@@ -429,20 +495,37 @@ Ext.define("TSInitiativePercentageEntry", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'selector_box',layout: 'hbox', defaults: { margin: 10 }},
         {xtype:'container',itemId:'display_box'}
     ],
 
     integrationHeaders : {
         name : "TSInitiativePercentageEntry"
     },
-                        
+    
+    config: {
+        defaultSettings: {
+            validBeforeMonthEnd: 5,
+            validAfterMonthEnd: 10
+        }
+    },
+    
     launch: function() {
         var me = this;
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
         
+        var before = this.getSetting('validBeforeMonthEnd'),
+            after  = this.getSetting('validAfterMonthEnd');
+        
+        this.monthNameForEntry = TSDateCalculator.getMonthNameInLimits(new Date(), before, after);
+        this.monthIsoForEntry = TSDateCalculator.getMonthIsoInLimits(new Date(), before, after);
+
+        if ( Ext.isEmpty(this.monthNameForEntry) ) {
+            this._showAppMessage("Entry during this period is closed.");
+            return;
+        }
         CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
             success: function(pis) {
                 this.PortfolioItemTypes = pis;
@@ -508,6 +591,13 @@ Ext.define("TSInitiativePercentageEntry", {
                     }, 
                     me
                 );
+                
+                container.add({
+                    xtype:'container',
+                    cls: 'month-name-display',
+                    html: this.monthNameForEntry
+                });
+        
             },
             scope: this
         });
@@ -554,8 +644,13 @@ Ext.define("TSInitiativePercentageEntry", {
         var deferred = Ext.create('Deft.Deferred'),
             project_oid = Rally.util.Ref.getOidFromRef(project_ref);
         
-        // TODO: figure out month
-        var month = "November";
+        var month_start = this.monthIsoForEntry;
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(month_start), 'month', 1
+            )
+        );
+        
         
         var config = {
             find: {
@@ -566,7 +661,7 @@ Ext.define("TSInitiativePercentageEntry", {
                     ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
                     "_PreviousValues.ScheduleState": { "$exists": true },
                     "_ValidFrom": {
-                        "$gte": "2016-11-01",
+                        "$gte": month_start,
                         "$lt": "2016-12-01"
                     }
                 },
@@ -691,14 +786,12 @@ Ext.define("TSInitiativePercentageEntry", {
                                     var row_value = record.get('__percentage') || 0;
                                     total = total + row_value;
                                 }
-                                console.log('total before:', total);
                                 // adjust for change (original value is already 
                                 // in the store so the loop above pulled it, but we
                                 // want to replace it with the new value
                                 var original_value = this.originalValue || 0;
                                 
                                 total = total - original_value + parseFloat(value,10);
-                                console.log("new total:", total);
                                 
                                 if ( total > 100) {
                                     return "The total (" + total + ") is greater than 100%";
@@ -747,6 +840,25 @@ Ext.define("TSInitiativePercentageEntry", {
         display_box.removeAll();
     },
     
+    getSettingsFields: function() {
+        return [
+            { 
+                xtype:'rallynumberfield',
+                name: 'validBeforeMonthEnd',
+                fieldLabel: 'Days Before Month End',
+                minValue: 0,
+                maxValue: 14
+            },
+            { 
+                xtype:'rallynumberfield',
+                name: 'validAfterMonthEnd',
+                fieldLabel: 'Days After Month End',
+                minValue: 0,
+                maxValue: 14
+            },
+        ];
+    },
+    
     getOptions: function() {
         return [
             {
@@ -778,6 +890,7 @@ Ext.define("TSInitiativePercentageEntry", {
     <style type="text/css">
 
 .app {
+    
 }
 .tsinfolink {
     position:absolute;
@@ -793,6 +906,12 @@ Ext.define("TSInitiativePercentageEntry", {
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+
+.month-name-display {
+    color: #888;
+    font-size: 18px;
+    font-family: ProximaNova,Helvetica,Arial;
 }
     </style>
 

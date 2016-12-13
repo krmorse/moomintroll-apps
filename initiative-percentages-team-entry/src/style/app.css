@@ -1,4 +1,5 @@
 .app {
+    
 }
 .tsinfolink {
     position:absolute;
@@ -14,4 +15,10 @@
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+
+.month-name-display {
+    color: #888;
+    font-size: 18px;
+    font-family: ProximaNova,Helvetica,Arial;
 }

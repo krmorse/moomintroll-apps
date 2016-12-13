@@ -12,10 +12,12 @@
         var CHECKSUM = [%= checksum %];
     </script>
     
-    <script type="text/javascript" src="/apps/<%= sdk %>/sdk-debug.js"></script>
+    <script type="text/javascript" src="/apps/<%= sdk %>/sdk.js"></script>
     <!-- our highcharts (needed so that we can add patterns) -->
+    <!-- 
     <script type="text/javascript" src="/apps/<%= sdk %>/lib/analytics/analytics-all.js"></script>
-
+    -->
+    
     <script type="text/javascript">
         Rally.onReady(function() {
             <%= js_contents %>
