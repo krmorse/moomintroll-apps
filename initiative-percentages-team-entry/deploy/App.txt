@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 10:52:21 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 15:36:16 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 10:52:21 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 15:36:16 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 16411209538;
+        var CHECKSUM = 21755785148;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -469,7 +469,10 @@ Ext.define('TSDateCalculator',{
 });
 Ext.define('TSModel',{
     extend: 'Ext.data.Model',
-    
+    statics: {
+        keyPrefix: 'ca.ts.percentage',
+    },
+
     fields: [
         { name: '_ref', type: 'string' },
         { name: '_refObjectName', type: 'string' },
@@ -477,11 +480,94 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', defaultValue: 0 }
+        { name: '__percentage', type: 'float', defaultValue: 0 },
+        { name: 'Project', type:'object' },
+        { name: '__pref', type: 'object', convert: function(pref,record) {
+            if ( Ext.isEmpty(pref) ) { return; }
+            var value = Ext.JSON.decode(pref.get('Value'));
+            record.set('__lastChangedBy',value.__lastChangedBy);
+            record.set('__lastChangedOn', value.__lastChangedOn);
+            record.set('__percentage', value.__percentage);
+            return pref;
+        }},
+        { name: '__lastChangedBy', type: 'object' },
+        { name: '__lastChangedOn', type: 'string' },
+        { name: '__monthStart', type: 'string' },
+        { name: '__dataProjectRef', type:'string' } // for the pref to be assigned to
     ],
     
-    save: function() {
-        return;
+    getKey: function() {
+            var key = Ext.String.format("{0}.{1}.{2}",
+                this.keyPrefix,
+                this.get('__monthStart'),
+                this.get('ObjectID')
+            );
+            return key;
+    },
+
+    save: function(v) {
+        var changes = this.getChanges();
+
+        if (! Ext.isObject(changes) ) {
+            return;
+        }
+        
+        var user = Rally.getApp().getContext().getUser();
+
+        this.set('__lastChangedBy', {
+            ObjectID: user.ObjectID,
+            _ref: user._ref,
+            _refObjectName: user._refObjectName,
+            UserName: user.UserName
+        });
+        var timestamp = Rally.util.DateTime.toIsoString(new Date());
+        this.set('__lastChangedOn', timestamp);
+        
+        return this._savePercentage();
+    },
+    
+    _savePercentage: function() {
+        var me = this;
+        
+        var json_value = Ext.JSON.encode({
+            __lastChangedOn: this.get('__lastChangedOn'),
+            __lastChangedBy: this.get('__lastChangedBy'),
+            __percentage: this.get('__percentage')
+        });
+        
+        var pref = this.get('__pref');
+        if ( Ext.isEmpty(pref) ) {
+            return this._createPreference(json_value);
+        } else {
+            pref.set('Value',json_value);
+            console.log('saving new value:', json_value);
+            return pref.save();
+        }
+    },
+    
+    _createPreference: function(json_value) {
+        var me = this,
+            key = this.getKey(),
+            project_ref = this.get('__dataProjectRef');
+        
+        var config = {
+            Project: project_ref,
+            Name: key,
+            Value: json_value
+        };
+        
+        Rally.data.ModelFactory.getModel({
+            type: 'Preference',
+            scope: this,
+            success: function(model) {
+                var pref = Ext.create(model,config);
+                pref.save({
+                    callback: function(result, operation) {
+                        me.set('__pref', result[0]);
+                    }
+                });
+            }
+        });
     }
 });
 Ext.override(Rally.ui.grid.plugin.Validation,{
@@ -617,14 +703,27 @@ Ext.define("TSInitiativePercentageEntry", {
         
         Deft.Chain.pipeline([
             function() { return this._fetchActiveStoryHierarchies(project_ref); },
-            this._fetchInitiativesFromHierarchies
+            this._fetchInitiativesFromHierarchies,
+            this._fetchAlreadyEnteredData
         ],this).then({
-            success: function(initiatives) {
-                this.logger.log('success', initiatives);
+            success: function(results) {
+                var initiatives = results[0],
+                    prefs_by_oid = results[1];
+                
+                this.logger.log("prefs by oid:", prefs_by_oid);
                 
                 var models = Ext.Array.map(initiatives, function(initiative) {
                     return initiative.getData();
                 });
+                
+                Ext.Array.each(models, function(model){
+                    model.__monthStart = this.monthIsoForEntry;
+                    model.__dataProjectRef = this.selectedProject;
+
+                    if (!Ext.isEmpty(model.ObjectID)){
+                        model.__pref = prefs_by_oid[model.ObjectID];
+                    }
+                },this);
                 
                 this.displayGrid(models);
             },
@@ -652,7 +751,6 @@ Ext.define("TSInitiativePercentageEntry", {
                 Rally.util.DateTime.fromIsoString(month_start), 'month', 1
             )
         );
-        
         
         var config = {
             find: {
@@ -722,10 +820,43 @@ Ext.define("TSInitiativePercentageEntry", {
         var config = {
             model: this.PortfolioItemTypes[1].get('TypePath'),
             filters: filters,
-            fetch: ['FormattedID','Name','Notes','Description'],
+            fetch: ['FormattedID','Name','Notes','Description','Project'],
             enablePostGet: true
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    _fetchAlreadyEnteredData: function(initiatives) {
+        var deferred = Ext.create('Deft.Deferred'),
+            key_prefix = TSModel.keyPrefix,
+            month_start = this.monthIsoForEntry;
+        
+        var config = {
+            model: 'Preference',
+            fetch: ['Name','Value'],
+            filters: [
+                {property:'Name',operator:'contains',value: key_prefix + "." + month_start},
+                {property:'Project', value: this.selectedProject}
+            ]
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config).then({
+            success: function(prefs) {
+                var prefs_by_oid = {};
+                Ext.Array.each(prefs, function(pref){
+                    var pref_name = pref.get('Name');
+                    var pref_array = pref_name.split('.');
+                    if ( pref_array.length != 5 ) { return; }
+                    prefs_by_oid[pref_array[4]] = pref;
+                });
+                deferred.resolve([initiatives,prefs_by_oid]);
+            },
+            failure: function(msg) {
+                deferred.reject(msg)
+            }
+        });
+        
+        return deferred.promise;
     },
     
     displayGrid: function(initiatives) {

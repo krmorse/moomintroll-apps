@@ -131,14 +131,27 @@ Ext.define("TSInitiativePercentageEntry", {
         
         Deft.Chain.pipeline([
             function() { return this._fetchActiveStoryHierarchies(project_ref); },
-            this._fetchInitiativesFromHierarchies
+            this._fetchInitiativesFromHierarchies,
+            this._fetchAlreadyEnteredData
         ],this).then({
-            success: function(initiatives) {
-                this.logger.log('success', initiatives);
+            success: function(results) {
+                var initiatives = results[0],
+                    prefs_by_oid = results[1];
+                
+                this.logger.log("prefs by oid:", prefs_by_oid);
                 
                 var models = Ext.Array.map(initiatives, function(initiative) {
                     return initiative.getData();
                 });
+                
+                Ext.Array.each(models, function(model){
+                    model.__monthStart = this.monthIsoForEntry;
+                    model.__dataProjectRef = this.selectedProject;
+
+                    if (!Ext.isEmpty(model.ObjectID)){
+                        model.__pref = prefs_by_oid[model.ObjectID];
+                    }
+                },this);
                 
                 this.displayGrid(models);
             },
@@ -166,7 +179,6 @@ Ext.define("TSInitiativePercentageEntry", {
                 Rally.util.DateTime.fromIsoString(month_start), 'month', 1
             )
         );
-        
         
         var config = {
             find: {
@@ -236,10 +248,43 @@ Ext.define("TSInitiativePercentageEntry", {
         var config = {
             model: this.PortfolioItemTypes[1].get('TypePath'),
             filters: filters,
-            fetch: ['FormattedID','Name','Notes','Description'],
+            fetch: ['FormattedID','Name','Notes','Description','Project'],
             enablePostGet: true
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    _fetchAlreadyEnteredData: function(initiatives) {
+        var deferred = Ext.create('Deft.Deferred'),
+            key_prefix = TSModel.keyPrefix,
+            month_start = this.monthIsoForEntry;
+        
+        var config = {
+            model: 'Preference',
+            fetch: ['Name','Value'],
+            filters: [
+                {property:'Name',operator:'contains',value: key_prefix + "." + month_start},
+                {property:'Project', value: this.selectedProject}
+            ]
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config).then({
+            success: function(prefs) {
+                var prefs_by_oid = {};
+                Ext.Array.each(prefs, function(pref){
+                    var pref_name = pref.get('Name');
+                    var pref_array = pref_name.split('.');
+                    if ( pref_array.length != 5 ) { return; }
+                    prefs_by_oid[pref_array[4]] = pref;
+                });
+                deferred.resolve([initiatives,prefs_by_oid]);
+            },
+            failure: function(msg) {
+                deferred.reject(msg)
+            }
+        });
+        
+        return deferred.promise;
     },
     
     displayGrid: function(initiatives) {
