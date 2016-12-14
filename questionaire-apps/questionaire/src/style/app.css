@@ -64,3 +64,73 @@
     margin-left: 15px;
     color: #000000;
 }
+
+.rally-upper-bold {
+    color: #222;
+    cursor: default;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 12px;
+    text-transform: uppercase;
+    vertical-align: top;
+}
+
+.rally-panel-header {
+    font-size: 10px;
+    background-color: #e6e6e6;
+}
+
+.checkbox-label {
+    vertical-align: bottom;
+    margin-left: 15px;
+}
+
+label.x-item-disabled {
+    color: #000!important;
+}
+
+.title-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    color: #888;
+}
+
+.config-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    color: #888;
+    margin: 10px;
+    width: 95%;
+}
+
+.button-no-border {
+    border-color: #fff!important;
+    background-color: #fff;
+    color: #888!important;
+    font-size: 14px;
+}
+
+.button-no-border .x-btn-inner-center{
+    color: #888!important;
+}
+
+.danger-button {
+    color: #B81B10;!important;
+    border-color: #B81B10!important;
+    background-color: #fff;
+    font-size: 14px;
+    border-width: 1px!important;
+    margin: 5px;
+}
+
+.danger-button .x-btn-inner-center {
+    color: #B81B10;!important;
+}
+
+.add-new-section {
+    color: #000!important;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    font-style: italic;
+}

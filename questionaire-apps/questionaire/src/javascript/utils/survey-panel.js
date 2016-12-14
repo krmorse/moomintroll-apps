@@ -187,6 +187,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
     },
     close: function(){
         this.survey.destroy();
+        this.fireEvent('destroy');
         this.destroy();
     },
     _getSurveyContainer: function(){

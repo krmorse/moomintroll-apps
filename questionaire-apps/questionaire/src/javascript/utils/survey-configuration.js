@@ -1,228 +1,134 @@
 Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
 
+    /**
+     * Types of panels
+     */
+    TYPE_CHOICE: 'choice',
+    TYPE_TEXT_ENTRY: 'text',
+
     model: 'PortfolioItem/Initiative',
     fetch: ['FormattedID','Name'],
-    filters: [],
 
     title: 'Financial Survey',
 
-    startContainer: 'things',
+    startContainer: 'root',
+
+
+    /**
+     * panels:
+     *     hash of objects representing a panel in the survey
+     *
+     *     key: unique panel identifier
+     *     type:  type of panel (choice or text entry)  see above for options
+     *     text: the text of the question at the top of the panel
+     *
+     *     choices:  null for anything other than choice type
+     *     ** choice object **
+     *     {
+     *          text: answer text
+     *          actions:  []  array of actions to be taken when this choice is selected see below for details
+     *     }
+     *
+     *     textEntryFieldType:  type of field for text entry, null for choices
+     *     actions:  []  array of actions to be taken when next is clicked;  If this is a choice, then the actions shoudl be in the choice.  If they are not, this field will override any choice
+     *
+     *     ** action object **
+     *     {
+     *          type: update or next panel,
+     *          field: (for update, null for next panel)
+     *          value: for next panel, the name of the next panel.  Null for the end of the survey,
+     *                  for update, the value to update the field with.  If {value}, then it will take the value of the control
+     *
+     *     }
+     *
+     *
+     */
+
 
     panels: {
-        things: {
-            key: 'things',
+        root: {
+            id: 'root',
             type: 'choice',
             text: 'Please select your favorite kind of thing:',
             options: [{
                 text: 'I like animals',
-                nextKey: 'animals'
+                nextSection: 'animals',
+                field: null,
+                value: null
             },{
                 text: 'I like cars',
-                nextKey: 'cars'
+                nextSection: 'cars',
+                field: null,
+                value: null
             }],
-            value: null
+            optionValue: null
         },
         animals: {
-            key: 'animals',
+            id: 'animals',
             text: 'Please select your favorite kind of animal',
             type: 'choice',
             options: [{
                 text: 'I like dogs',
-                nextKey: 'dogs'
+                nextSection: 'dogs',
+                field: null,
+                value: null
             },{
                 text: 'I like cats',
-                nextKey: 'cats',
-                updates: {
-                    Name: 'I picked cats'
-                }
+                nextSection: null,
+                field: null,
+                value: null
             },{
                 text: 'I like birds',
-                nextKey: 'birds',
-                updates: {
-                    Name: 'I picked birds'
-                }
+                nextSection: 'birds',
+                field: null,
+                value: null
             }],
-            value: null
+            optionValue: null
         },
         cars: {
-            key: 'cars',
+            id: 'cars',
             text: 'Please describe your ideal car',
-            type: 'description',
+            type: 'text',
             field: 'Description',
-            value: null,
-            nextKey: 'carColor',
-            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel.",
-            updates: {
-                Description: '{value}',
-                Name: 'I picked cars'
-            }
+            nextSection: 'carColor',
+            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel."
         },
         carColor: {
-            key: 'carColor',
+            id: 'carColor',
             text: 'what color would your ideal car be?',
-            type: 'description',
+            type: 'text',
             field: 'Notes',
-            value: null,
-            nextKey: null,
-            updates: {
-                Notes: '{value}'
-            }
+            nextSection: null
         },
         dogs: {
             text: 'Please select your favorite kind of dog',
             type: 'choice',
-            key: 'dogs',
+            id: 'dogs',
             options: [{
                 text: 'I like mutts',
-                nextKey: 'mutts',
-                updates: {
-                    Name: 'I like mutts'
-                }
+                nextSection: 'mutts',
+                field: "Name",
+                value: 'I like mutts'
             },{
                 text: 'I like poodles',
-                nextKey: 'poodles',
-                updates: {
-                    Name: 'I like poodles'
-                }
+                nextSection: 'poodles',
+                field: "Name",
+                value: 'I like poodles'
             }],
-            value: null
+            optionValue: null
         }
     },
 
-    questions: {
-        things: {
-            childType: 'surveycontainerradio',
-            childInstructions: 'Please select your favorite kind of thing:',
-            children: ['animals','cars'],
-            key: 'things'
-        },
-        carDescription:{
-            question: 'Please describe your ideal car',
-            updates:{
-                Description: '{value}'
-            },
-            field: 'Description',
-            exampleValue: 'Expected Description:<br/><br/>I like vintage airstream campers.' ,
-            key: 'carDescription'
 
-        },
-        'animals': {
-            question: 'I like animals more than cars',
-            updates: {
-                Name: "I like animals",
-                Description: "I like animals more than cars"
-            },
-            childInstructions: 'Please select your favorite kind of animal',
-            childType: 'surveycontainerradio',
-            children: ['cats','dogs','birds'],
-            key: 'animals'
-        },
-        'cars': {
-            question: 'I like cars more than animals',
-            updates: {
-                Name: "I like cars",
-                Description: "I like cars more than animals"
-            },
-            childInstructions: "Please describe your ideal car",
-            childType: 'surveytypedescriptiontemplate',
-            children: ['carDescription'],
-            key: 'cars'
-        },
-        'cats': {
-            question: 'I like cats the best',
-            childInstructions: 'Please select your favorite kind of cat',
-            childType: 'surveycontainerradio',
-            children: ["maine-coon",'tabby','persian'],
-            key: 'cats',
-            updates: {
-                Name: "I like cats",
-                Description: "I like cats"
-            }
-        },
-        'dogs': {
-            question: 'I like dogs the most',
-            childInstructions: 'Please select your favorite kind of dog',
-            childType: 'surveycontainerradio',
-            children: ['poodles','goldenRetrievers','mutts'],
-            key: 'dogs',
-            updates: {
-                Name: "I like dogs",
-                Description: "I like dogs"
-            }
-        },
-        'birds': {
-            question: 'I like birds',
-            childInstructions: 'Please select your favorite kind of bird',
-            childType: 'surveycontainerradio',
-            children: ['blue-jay','cardinal','oriole'],
-            key: 'birds',
-            updates: {
-                Name: "I like birds",
-                Description: "I like birds"
-            }
-        },
-        'maine-coon': {
-            question: 'Maine-coons with their squeaky voices and huge tails are the best',
-            key: 'maine-coon',
-            updates: {
-                Description: "Maine-coons with their squeaky voices and huge tails are the best"
-            }
-        },
-        'tabby': {
-            question: 'Tabby have the best coloring',
-            key: 'tabby',
-            updates: {
-                Description: "Tabby have the best coloring"
-            }
-        },
-        'persian': {
-            question: 'Persian cats have attitude',
-            key: 'persian',
-            updates: {
-                Description: "Persian cats have attitude"
-            }
-        },
-        'poodles': {
-            question: 'Poodles are awesome because they dont shed',
-            key: 'poodles',
-            updates: {
-                Description: "Poodles are awesome because they dont shed"
-            }
-        },
-        'goldenRetrievers': {
-            question: 'Golden Retrievers are so loyal and sweet.',
-            key: 'goldenRetrievers',
-            updates: {
-                Description: 'Golden Retrievers are so loyal and sweet.'
-            }
-        },
-        'mutts': {
-            question: 'Mutts are the best',
-            key: 'mutts',
-            updates: {
-                Description: 'Mutts are the best'
-            }
-        },
-        'blue-jay': {
-            question: 'Blue jays have the most beautiful colors',
-            key: 'blue-jay',
-            updates: {
-                Description: 'Blue jays have the most beautiful colors'
-            }
-        },
-        'cardinal': {
-            question: 'Cardinals are bold and red',
-            key: 'cardinal',
-            updates: {
-                Description: 'Cardinals are bold and red'
-            }
-        },
-        'oriole': {
-            question: 'Orioles are a neat bird, but named after a baseball team that loses to the Pirates all the time',
-            key: 'oriole',
-            updates: {
-                Description: 'Orioles are a neat bird, but named after a baseball team that loses to the Pirates all the time'
-            }
+    getRootConfig: function(){
+        if (!this.panels || this.panels.length === 0 || !this.panels.root){
+            this.panels.root = {
+                key: 'root',
+                text: 'Please enter the first survey question',
+                type: this.TYPE_CHOICE,
+                choices: []
+            };
         }
+        return this.panels.root;
     }
 });

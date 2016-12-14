@@ -3,13 +3,13 @@
 <head>
     <title>Questionaire</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 06 2016 13:38:49 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 13 2016 21:44:45 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 06 2016 13:38:49 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 21:44:45 GMT-0700 (MST)";
         var STORY    = "F166";
         var BUILDER  = "kcorkan";
-        var CHECKSUM = 25495084802;
+        var CHECKSUM = 73700175825;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -212,6 +212,64 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.define('CA.agile.technicalservices.control.PanelPicker',{
+    extend: 'Ext.container.Container',
+    alias: 'widget.panelpicker',
+
+    layout: 'hbox',
+    allowEndOfSurvey: true,
+
+    padding: 0,
+
+    config: {
+        valueField: 'value',
+        displayField: 'name'
+    },
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+    initComponent: function(){
+
+       var data  = [{
+            name: '-- Submit Form --',
+            value: null
+        }];
+
+        var pastCurrentSection = false;
+        Ext.Array.each(this.keys, function(key){
+            if (key == this.currentSection){
+                pastCurrentSection = true;
+                return true;
+            }
+            if (pastCurrentSection){
+                data.push({
+                    name: Ext.String.format('Section [{0}]', key),
+                    value: key
+                });
+            }
+
+        }, this);
+
+        var panelStore = Ext.create('Rally.data.wsapi.Store',{
+            data: data,
+            fields: ['name', 'value']
+        }, this);
+
+        var config = Ext.apply(this.config, {
+            xtype: 'rallycombobox',
+            store: panelStore
+        });
+
+        this.items = [config];
+        this.callParent(arguments);
+
+    },
+    getValue: function(){
+        return this.down('rallycombobox').getValue();
+        //return this.down('#' + this.itemId).getValue();
+    }
+});
 Ext.define('CA.agile.technicalservices.Survey',{
     constructor: function(config){
         Ext.apply(this, config);
@@ -401,232 +459,651 @@ Ext.define('CA.agile.technicalservices.Survey',{
         return this.getPanelCfg(key);
     }
 });
+Ext.define('CA.agile.technicalservices.Toolbox',{
+    singleton: true,
+
+    isUserWorkspaceAdmin: function(context){
+
+        var isAdmin = false,
+            permissions = context.getPermissions().userPermissions,
+            currentWorkspace = context.getWorkspace().ObjectID;
+
+        Ext.Array.each(permissions, function(permission) {
+            if (permission.Role === "Subscription Admin") {
+                isAdmin = true;
+                return false;
+            }
+            var permissionOid = Rally.util.Ref.getOidFromRef(permission._ref);
+            if (permission.Role === "Workspace Admin" && permissionOid === currentWorkspace) {
+                isAdmin = true;
+                return false;
+            }
+        });
+        return isAdmin;
+    }
+});
+Ext.define('CA.agile.technicalservices.survey.Settings',{
+    singleton: true,
+
+});
+Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
+    extend: 'Ext.panel.Panel',
+    alias: 'widget.surveyconfigurationview',
+    logger: new Rally.technicalservices.Logger(),
+    MAX_TITLE_LEN: 100,
+
+    sectionTypeSuffix: '-type-',
+    sectionTextSuffix: '-text-',
+    sectionNextSectionSuffix: '-next-section-',
+    deleteSectionSuffix: '-delete-section',
+    sectionFieldSuffix: '-field-',
+    sectionExampleValueSuffix: '-example-value',
+    sectionUpdateContainerSuffix: '-update-container-' ,
+    sectionFieldValueSuffix: '-field-value-',
+
+    layout: 'accordion',
+    flex: 1,
+    width: 400,
+    /**
+     *  Configurations:
+     *  surveyType: artifact type of the survey
+     *  surveyPanels: array of panels
+     **/
+
+    initComponent: function(){
+        this.items = this._getSections();
+
+        this.callParent(arguments);
+    },
+    _getSections: function(){
+        var sections = [],
+            idx = 0;
+        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionID, section){
+            sections.push(this._getSection(section, idx++));
+        }, this);
+
+        sections.push(this._getAddNewSection());
+
+        return sections;
+    },
+    _getSectionKeys: function(){
+        return Ext.Object.getKeys(this.surveyPanelCfg.panels);
+    },
+    _getAddNewSection: function(){
+        return {
+            title: '<div class="add-new-section">Add a New Section...</div>',
+            layout: 'hbox',
+            items: [{
+                xtype: 'rallytextfield',
+                fieldLabel: 'Section Id',
+                labelAlign: 'top',
+                labelCls: 'rally-upper-bold',
+                itemId: 'new-section-id',
+                emptyText: 'Please enter a unique section id (25 characters or less)...',
+                maxLength: 25,
+                width: 300,
+                margin: 10,
+                height: 35
+            },{
+                xtype:'rallybutton',
+                text: 'Add Section',
+                margin: '25 10 10 10',
+                handler: this.addSection,
+                scope: this
+            }],
+            collapsed: true
+        };
+    },
+    _getSection: function(sectionConfig, idx){
+        console.log('sectionConfig', sectionConfig, idx);
+        var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
+            type = sectionConfig.type;
+
+        return {
+            title: title,
+            flex: 1,
+            items: this._getSectionItems(sectionConfig, idx),
+            itemId: sectionConfig.id,
+            collapsed: sectionConfig.id !== 'root'
+        };
+    },
+    _getSectionItems: function(sectionConfig, idx){
+
+        var type = sectionConfig.type;
+
+        var sectionItems = [{
+            xtype: 'textareafield',
+            value: sectionConfig.text,
+            itemId: this.getSectionTextItemId(sectionConfig.id),
+            fieldLabel: 'Question',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            labelSeparator: '',
+            grow: true,
+            width: '90%',
+            margin: 10
+        },{
+            xtype: 'radiogroup',
+            itemId: this.getSectionTypeItemId(sectionConfig.id),
+            fieldLabel: 'Question Type',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            labelSeparator: '',
+            columns: 4,
+            width: '90%',
+            margin: 10,
+            items: [
+                { boxLabel: 'Multiple Choice', name: 'questionType', inputValue: 'choice', checked: type == 'choice' },
+                { boxLabel: 'Text Entry Field', name: 'questionType', inputValue: 'text', checked: type == 'text'}
+            ],
+            listeners: {
+                scope: this,
+                change: this.changeType
+            }
+        }];
+
+        if (type == 'text'){
+            sectionItems = sectionItems.concat(this._getTextTypeItems(sectionConfig));
+        }
+
+        if (type == 'choice'){
+            sectionItems = sectionItems.concat(this._getChoiceTypeItems(sectionConfig));
+        }
+
+        if (sectionConfig.id !== 'root'){
+            sectionItems.push({
+                xtype: 'container',
+                layout: 'hbox',
+                items: [{
+                    xtype: 'container',
+                    flex: 1
+                },{
+                    xtype: 'rallybutton',
+                    text: 'Delete Section',
+                    iconCls: 'icon-warning',
+                    cls: 'danger-button',
+                    itemId: sectionConfig.id + this.deleteSectionSuffix,
+                    handler: this.deleteSection,
+                    scope: this
+                }]
+            });
+        }
+
+        return sectionItems;
+    },
+    _getTextTypeItems: function(sectionConfig){
+
+        var model = this.surveyPanelCfg.model,
+            field = sectionConfig.field;
+
+        var nextSection = null,
+            sectionKeys = this._getSectionKeys();
+        if (sectionConfig.nextSection && Ext.Array.contains(sectionKeys, sectionConfig.nextSection)){
+            nextSection = sectionConfig.nextSection;
+        }
+
+        return [{
+            xtype: 'rallyfieldcombobox',
+            fieldLabel: 'Text Entry Field Name',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            itemId: this.getSectionFieldItemId(sectionConfig.id),
+            width: 300,
+            margin: 10,
+            model: model,
+            value: field,
+            allowNoEntry: true,
+            _isNotHidden: this.shouldShowTextField
+
+        },{
+            xtype: 'textareafield',
+            value: sectionConfig.exampleValue || '',
+            fieldLabel: 'Example Value',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            itemId: this.getSectionExampleValueItemId(sectionConfig.id),
+            labelSeparator: '',
+            grow: true,
+            width: '90%',
+            margin: 10
+        },{
+            xtype: 'panelpicker',
+            itemId: this.getSectionNextSectionItemId(sectionConfig.id),
+            fieldLabel: 'Next Section',
+            labelCls: 'rally-upper-bold',
+            labelAlign: 'top',
+            value: nextSection,
+            keys: sectionKeys,
+            margin: 5,
+            currentSection: sectionConfig.id
+        }];
+    },
+    _getChoiceTypeItems: function(sectionConfig, sectionIndex){
+        var choiceItems = [{
+                xtype: 'container',
+                layout:'column',
+                width: '100%',
+                padding: 5,
+                items:[{
+                    xtype: 'container',
+                    columnWidth:.05,
+                    html: '&nbsp;'
+                },{
+                    xtype:'container',
+                    html: '<div class="rally-upper-bold">Choice Option Text</div>',
+                    columnWidth:.5
+                },{
+                    xtype: 'container',
+                    columnWidth:.225,
+                    html: '<div class="rally-upper-bold" style="text-align:center;">Next Section</div>'
+                },{
+                    xtype: 'container',
+                    columnWidth:.225,
+                    html: '<div class="rally-upper-bold" style="text-align:center;">Update Action</div>'
+                }]
+            }];
+
+        var idx = 0,
+            sectionKeys = this._getSectionKeys();
+
+
+        var model = this.surveyPanelCfg.model;
+
+
+        Ext.Array.each(sectionConfig.options || [], function(option){
+
+            var nextSection = null;
+            if (option.nextSection && Ext.Array.contains(sectionKeys, option.nextSection)){
+                nextSection = option.nextSection;
+            }
+
+            choiceItems.push({
+                xtype: 'container',
+                layout:'column',
+                width: '100%',
+                padding: 5,
+                items:[{
+                    xtype: 'rallybutton',
+                    iconCls: 'icon-delete',
+                    cls: 'button-no-border',
+                    itemId: sectionConfig.id + '-delete-' + idx,
+                    columnWidth:.05,
+                    handler: this.deleteOption,
+                    scope: this
+                },{
+                    xtype:'textareafield',
+                    grow: true,
+                    fieldLabel: '',
+                    itemId: this.getSectionTextItemId(sectionConfig.id, idx),
+                    columnWidth:.5,
+                    value: option.text
+                },{
+                    xtype: 'panelpicker',
+                    itemId: this.getSectionNextSectionItemId(sectionConfig.id,idx),
+                    fieldLabel: '',
+                    margin: '0 10 5 10',
+                    value: nextSection,
+                    keys: sectionKeys,
+                    currentSection: sectionConfig.id,
+                    columnWidth:.2
+                },{
+
+                    xtype: 'container',
+                    itemId: this.getSectionUpdateContainerItemId(sectionConfig.id, idx),
+                    columnWidth:.25,
+                    items: [{
+                        xtype: 'rallyfieldcombobox',
+                        fieldLabel: 'Field',
+                        labelAlign: 'right',
+                        labelWidth: 75,
+                        itemId: this.getSectionFieldItemId(sectionConfig.id, idx++),
+                        model: model,
+                        value: option.field || null,
+                        allowNoEntry: true,
+                        noEntryText: '-- None --',
+                        _isNotHidden: this.shouldShowUpdateField,
+                        listeners: {
+                            select: this.updateFieldValueOptions,
+                            scope: this
+                        }
+                    }]
+                }]
+            });
+
+        }, this);
+
+        choiceItems.push({
+            xtype:'rallybutton',
+            iconCls: 'icon-add',
+            itemId: sectionConfig.id + '-addOption',
+            text: 'Add Choice',
+            cls: 'button-no-border',
+            margin: 5,
+            handler: this.addOption,
+            scope: this
+        });
+
+        return  choiceItems;
+    },
+    addOption: function(btn){
+        var optionInfo = btn.itemId.replace('-addOption', '');
+        if (optionInfo){
+            var section = this.surveyPanelCfg.panels[optionInfo];
+            section.options.push({
+                text: 'New Option text',
+                nextSection: null
+            });
+            this.refreshSection(optionInfo);
+        }
+    },
+    deleteOption: function(btn){
+        var optionInfo = btn.itemId.split('-delete-');
+        if (optionInfo && optionInfo.length == 2){
+            var section = this.surveyPanelCfg.panels[optionInfo[0]];
+            section.options.splice(optionInfo[1],1);
+            this.refreshSection(optionInfo[0]);
+        }
+    },
+    refreshSection: function(sectionId){
+
+        var sectionCmp = this.down('#' + sectionId);
+        if (sectionCmp){
+            sectionCmp.removeAll();
+            sectionCmp.add(this._getSectionItems(this.surveyPanelCfg.panels[sectionId]));
+            sectionCmp.doLayout();
+        }
+    },
+    refreshSurvey: function(){
+        this.removeAll();
+        this.add(this._getSections());
+        this.doLayout();
+    },
+    deleteSection: function(btn){
+        var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
+        if (sectionId){
+            delete this.surveyPanelCfg.panels[sectionId];
+        }
+        this.refreshSurvey();
+    },
+    addSection: function(){
+        var sectionId = this.down('#new-section-id') && this.down('#new-section-id').getValue();
+        if (!sectionId){
+            Rally.ui.notify.Notifier.showError({message: 'Section ID cannot be blank.'});
+            return;
+        }
+
+        if (Ext.Array.contains(this._getSectionKeys(), sectionId)){
+            Rally.ui.notify.Notifier.showError({message: 'Section ID must be unique.  Please enter a unique section ID.'});
+            return;
+        }
+
+        this.surveyPanelCfg.panels[sectionId] = {
+            type: 'choice',
+            text: '',
+            id: sectionId,
+            options: []
+        };
+        this.refreshSurvey();
+    },
+    changeType: function(group, newValue){
+        var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
+
+        if (newValue && newValue.questionType){
+            this.surveyPanelCfg.panels[sectionId].type = newValue.questionType;
+            this.refreshSection(sectionId);
+        }
+    },
+    updateFieldValueOptions: function(cb){
+
+        var info = cb.itemId.split(this.sectionFieldSuffix);
+        var sectionId = info[0],
+            idx = info[1],
+            valueItemId = this.getSectionFieldValueItemId(sectionId, idx),
+            containerId = this.getSectionUpdateContainerItemId(sectionId, idx);
+
+        var fieldDef = cb && cb.getRecord() && cb.getRecord().get('fieldDefinition');
+
+        var cfg = null;
+        if (fieldDef && fieldDef.attributeDefinition){
+            cfg = fieldDef.editor || {
+                    xtype: 'rallytextfield'
+                };
+            cfg.itemId = valueItemId;
+            cfg.fieldLabel = 'Set to Value';
+            cfg.labelAlign = 'right';
+            cfg.labelWidth = 75;
+            cfg.width = cb.getWidth();
+        }
+
+        var ct = this.down('#' + containerId);
+        if (ct.down('#' + valueItemId)){
+            ct.down('#' + valueItemId).destroy();
+        }
+        if (cfg){
+            ct.add(cfg);
+        }
+    },
+    shouldShowUpdateField: function(field){
+        if (field.readOnly){ return false; }
+
+        if (field && field.attributeDefinition){
+            if (field.attributeDefinition.AttributeType === 'STRING' || field.attributeDefinition.AttributeType === 'TEXT'){
+                return true;
+            }
+        }
+        return false;
+    },
+    shouldShowTextField: function(field){
+
+        if (field.readOnly){ return false; }
+
+        if (field && field.attributeDefinition){
+            if (field.attributeDefinition.AttributeType === 'STRING' || field.attributeDefinition.AttributeType === 'TEXT'){
+                if (field.attributeDefinition.Constrained || field.constrained || field.editor.xtype === 'rallycombobox'){
+                    return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    },
+    getSurveyConfig: function(){
+        var surveyConfig = this.surveyPanelCfg;
+
+        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionId, section){
+            section.text = this.getSectionText(sectionId);
+            section.type = this.getSectionType(sectionId);
+            if (section.type === 'choice'){
+                section.options = this.getSectionOptions(sectionId);
+            } else {
+                section.options = [];
+                section.field = this.getSectionField(sectionId);
+                section.exampleValue = this.down(this.getSectionExampleValueItemId(sectionId, true)).getValue();
+                section.nextSection = this.down(this.getSectionNextSectionItemId(sectionId, -1, true)).getValue();
+            }
+
+        }, this);
+
+
+        return surveyConfig;
+    },
+    getSectionText: function(sectionId){
+        return this.down(this.getSectionTextItemId(sectionId, -1, true)).getValue();
+    },
+    getSectionTextItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionTextSuffix,idx,includeHash);
+    },
+    getSectionType: function(sectionId){
+        return this.down(this.getSectionTypeItemId(sectionId, true)).getValue() &&
+            this.down(this.getSectionTypeItemId(sectionId, true)).getValue().questionType;
+    },
+    getSectionField: function(sectionId, idx){
+        return this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue();
+    },
+    getSectionTypeItemId: function(sectionId, includeHash){
+        return this.getItemId(sectionId,this.sectionTypeSuffix,-1,includeHash);
+    },
+    getSectionFieldItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionFieldSuffix,idx,includeHash);
+    },
+    getSectionFieldValueItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionFieldValueSuffix,idx,includeHash);
+    },
+    getSectionExampleValueItemId: function(sectionId,includeHash){
+        return this.getItemId(sectionId, this.sectionExampleValueSuffix,-1,includeHash);
+    },
+    getSectionNextSectionItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionNextSectionSuffix,idx,includeHash);
+    },
+    getSectionUpdateContainerItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId, this.sectionUpdateContainerSuffix, idx, includeHash);
+    },
+    getItemId: function(sectionId, suffix, idx, includeHash){
+        var itemId = sectionId + suffix;
+        if (idx >= 0){
+            itemId += idx;
+        }
+
+        if (includeHash){
+            itemId = '#' + itemId;
+        }
+        return itemId;
+    },
+    getSectionOptions: function(sectionId){}
+
+});
 Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
+
+    /**
+     * Types of panels
+     */
+    TYPE_CHOICE: 'choice',
+    TYPE_TEXT_ENTRY: 'text',
 
     model: 'PortfolioItem/Initiative',
     fetch: ['FormattedID','Name'],
-    filters: [],
 
     title: 'Financial Survey',
 
-    startContainer: 'things',
+    startContainer: 'root',
+
+
+    /**
+     * panels:
+     *     hash of objects representing a panel in the survey
+     *
+     *     key: unique panel identifier
+     *     type:  type of panel (choice or text entry)  see above for options
+     *     text: the text of the question at the top of the panel
+     *
+     *     choices:  null for anything other than choice type
+     *     ** choice object **
+     *     {
+     *          text: answer text
+     *          actions:  []  array of actions to be taken when this choice is selected see below for details
+     *     }
+     *
+     *     textEntryFieldType:  type of field for text entry, null for choices
+     *     actions:  []  array of actions to be taken when next is clicked;  If this is a choice, then the actions shoudl be in the choice.  If they are not, this field will override any choice
+     *
+     *     ** action object **
+     *     {
+     *          type: update or next panel,
+     *          field: (for update, null for next panel)
+     *          value: for next panel, the name of the next panel.  Null for the end of the survey,
+     *                  for update, the value to update the field with.  If {value}, then it will take the value of the control
+     *
+     *     }
+     *
+     *
+     */
+
 
     panels: {
-        things: {
-            key: 'things',
+        root: {
+            id: 'root',
             type: 'choice',
             text: 'Please select your favorite kind of thing:',
             options: [{
                 text: 'I like animals',
-                nextKey: 'animals'
+                nextSection: 'animals',
+                field: null,
+                value: null
             },{
                 text: 'I like cars',
-                nextKey: 'cars'
+                nextSection: 'cars',
+                field: null,
+                value: null
             }],
-            value: null
+            optionValue: null
         },
         animals: {
-            key: 'animals',
+            id: 'animals',
             text: 'Please select your favorite kind of animal',
             type: 'choice',
             options: [{
                 text: 'I like dogs',
-                nextKey: 'dogs'
+                nextSection: 'dogs',
+                field: null,
+                value: null
             },{
                 text: 'I like cats',
-                nextKey: 'cats',
-                updates: {
-                    Name: 'I picked cats'
-                }
+                nextSection: null,
+                field: null,
+                value: null
             },{
                 text: 'I like birds',
-                nextKey: 'birds',
-                updates: {
-                    Name: 'I picked birds'
-                }
+                nextSection: 'birds',
+                field: null,
+                value: null
             }],
-            value: null
+            optionValue: null
         },
         cars: {
-            key: 'cars',
+            id: 'cars',
             text: 'Please describe your ideal car',
-            type: 'description',
+            type: 'text',
             field: 'Description',
-            value: null,
-            nextKey: 'carColor',
-            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel.",
-            updates: {
-                Description: '{value}',
-                Name: 'I picked cars'
-            }
+            nextSection: 'carColor',
+            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel."
         },
         carColor: {
-            key: 'carColor',
+            id: 'carColor',
             text: 'what color would your ideal car be?',
-            type: 'description',
+            type: 'text',
             field: 'Notes',
-            value: null,
-            nextKey: null,
-            updates: {
-                Notes: '{value}'
-            }
+            nextSection: null
         },
         dogs: {
             text: 'Please select your favorite kind of dog',
             type: 'choice',
-            key: 'dogs',
+            id: 'dogs',
             options: [{
                 text: 'I like mutts',
-                nextKey: 'mutts',
-                updates: {
-                    Name: 'I like mutts'
-                }
+                nextSection: 'mutts',
+                field: "Name",
+                value: 'I like mutts'
             },{
                 text: 'I like poodles',
-                nextKey: 'poodles',
-                updates: {
-                    Name: 'I like poodles'
-                }
+                nextSection: 'poodles',
+                field: "Name",
+                value: 'I like poodles'
             }],
-            value: null
+            optionValue: null
         }
     },
 
-    questions: {
-        things: {
-            childType: 'surveycontainerradio',
-            childInstructions: 'Please select your favorite kind of thing:',
-            children: ['animals','cars'],
-            key: 'things'
-        },
-        carDescription:{
-            question: 'Please describe your ideal car',
-            updates:{
-                Description: '{value}'
-            },
-            field: 'Description',
-            exampleValue: 'Expected Description:<br/><br/>I like vintage airstream campers.' ,
-            key: 'carDescription'
 
-        },
-        'animals': {
-            question: 'I like animals more than cars',
-            updates: {
-                Name: "I like animals",
-                Description: "I like animals more than cars"
-            },
-            childInstructions: 'Please select your favorite kind of animal',
-            childType: 'surveycontainerradio',
-            children: ['cats','dogs','birds'],
-            key: 'animals'
-        },
-        'cars': {
-            question: 'I like cars more than animals',
-            updates: {
-                Name: "I like cars",
-                Description: "I like cars more than animals"
-            },
-            childInstructions: "Please describe your ideal car",
-            childType: 'surveytypedescriptiontemplate',
-            children: ['carDescription'],
-            key: 'cars'
-        },
-        'cats': {
-            question: 'I like cats the best',
-            childInstructions: 'Please select your favorite kind of cat',
-            childType: 'surveycontainerradio',
-            children: ["maine-coon",'tabby','persian'],
-            key: 'cats',
-            updates: {
-                Name: "I like cats",
-                Description: "I like cats"
-            }
-        },
-        'dogs': {
-            question: 'I like dogs the most',
-            childInstructions: 'Please select your favorite kind of dog',
-            childType: 'surveycontainerradio',
-            children: ['poodles','goldenRetrievers','mutts'],
-            key: 'dogs',
-            updates: {
-                Name: "I like dogs",
-                Description: "I like dogs"
-            }
-        },
-        'birds': {
-            question: 'I like birds',
-            childInstructions: 'Please select your favorite kind of bird',
-            childType: 'surveycontainerradio',
-            children: ['blue-jay','cardinal','oriole'],
-            key: 'birds',
-            updates: {
-                Name: "I like birds",
-                Description: "I like birds"
-            }
-        },
-        'maine-coon': {
-            question: 'Maine-coons with their squeaky voices and huge tails are the best',
-            key: 'maine-coon',
-            updates: {
-                Description: "Maine-coons with their squeaky voices and huge tails are the best"
-            }
-        },
-        'tabby': {
-            question: 'Tabby have the best coloring',
-            key: 'tabby',
-            updates: {
-                Description: "Tabby have the best coloring"
-            }
-        },
-        'persian': {
-            question: 'Persian cats have attitude',
-            key: 'persian',
-            updates: {
-                Description: "Persian cats have attitude"
-            }
-        },
-        'poodles': {
-            question: 'Poodles are awesome because they dont shed',
-            key: 'poodles',
-            updates: {
-                Description: "Poodles are awesome because they dont shed"
-            }
-        },
-        'goldenRetrievers': {
-            question: 'Golden Retrievers are so loyal and sweet.',
-            key: 'goldenRetrievers',
-            updates: {
-                Description: 'Golden Retrievers are so loyal and sweet.'
-            }
-        },
-        'mutts': {
-            question: 'Mutts are the best',
-            key: 'mutts',
-            updates: {
-                Description: 'Mutts are the best'
-            }
-        },
-        'blue-jay': {
-            question: 'Blue jays have the most beautiful colors',
-            key: 'blue-jay',
-            updates: {
-                Description: 'Blue jays have the most beautiful colors'
-            }
-        },
-        'cardinal': {
-            question: 'Cardinals are bold and red',
-            key: 'cardinal',
-            updates: {
-                Description: 'Cardinals are bold and red'
-            }
-        },
-        'oriole': {
-            question: 'Orioles are a neat bird, but named after a baseball team that loses to the Pirates all the time',
-            key: 'oriole',
-            updates: {
-                Description: 'Orioles are a neat bird, but named after a baseball team that loses to the Pirates all the time'
-            }
+    getRootConfig: function(){
+        if (!this.panels || this.panels.length === 0 || !this.panels.root){
+            this.panels.root = {
+                key: 'root',
+                text: 'Please enter the first survey question',
+                type: this.TYPE_CHOICE,
+                choices: []
+            };
         }
+        return this.panels.root;
     }
 });
 Ext.define('CA.agile.technicalservices.SurveyContainer',{
@@ -1039,6 +1516,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
     },
     close: function(){
         this.survey.destroy();
+        this.fireEvent('destroy');
         this.destroy();
     },
     _getSurveyContainer: function(){
@@ -1069,7 +1547,6 @@ Ext.define("questionaire", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
-    layout: 'hbox',
     items: [
         {xtype:'container',itemId:'grid_box', flex: 1},
         {xtype:'container',itemId:'survey_box'}
@@ -1080,12 +1557,80 @@ Ext.define("questionaire", {
     },
     config: {
         defaultSettings: {
-
+            appMode: 'admin',
+            surveyType: 'PortfolioItem/Initiative',
+            surveyTitle: 'My Survey Title',
+            surveyQuery: '',
+            panels: null
         }
     },
     surveyDriver: null,
 
+    MODE_ADMIN: 'admin',
+    MODE_PREVIEW: 'preview',
+    MODE_PUBLISH: 'publish',
+
+
     launch: function() {
+        var appMode = this.getAppMode();
+
+        this.removeAll();
+
+        if (!this.isUserAdmin() && appMode === this.MODE_ADMIN){
+            this.addAppMessage("You need to be an administrator to create and publish a survey that modifies Portfolio Items.");
+            return;
+        }
+
+        var surveyConfig = Ext.create('CA.agile.technicalservices.SurveyConfiguration',{
+            surveyTitle: this.getSurveyTitle(),
+            surveyType: this.getSurveyType(),
+            surveyPanels: this.getSurveyPanelConfig()
+        });
+
+        if (appMode === this.MODE_ADMIN || !this.getSurveyPanelConfig() || this.getSurveyPanelConfig().length === 0){
+            this.launchAdminMode(surveyConfig);
+        } else {
+            this.launchSurveyMode(appMode === this.MODE_PREVIEW, surveyConfig);
+        }
+    },
+    launchAdminMode: function(surveyConfig){
+        this.logger.log('launchAdminMode', surveyConfig);
+
+        this.add({
+            xtype: 'rallybutton',
+            text: 'Save',
+            handler: this.saveConfiguration,
+            scope: this
+        });
+
+        this.add({
+            xtype: 'rallybutton',
+            text: 'Preview',
+            handler: this.previewConfiguration,
+            scope: this
+        });
+
+        var adminPanel = this.add({
+            xtype: 'surveyconfigurationview',
+            surveyPanelCfg: surveyConfig,
+            width: '99%'
+        });
+    },
+    previewConfiguration: function(){
+        var adminPanel = this.down('surveyconfigurationview');
+
+        this.logger.log('previewConfiguration', adminPanel.getSurveyConfig());
+        this.launchSurveyMode(true, adminPanel.getSurveyConfig());
+
+    },
+    saveConfiguration: function(){
+        var adminPanel = this.down('surveyconfigurationview');
+
+        this.logger.log('saveConfiguration', adminPanel.getSurveyConfig());
+
+    },
+    launchSurveyMode: function(preview, surveyConfig){
+        this.logger.log('launchSurveyMode', preview, surveyConfig);
         Ext.create('CA.agile.technicalservices.SurveyDriver',{
             listeners: {
                 ready: this.initializeApp,
@@ -1104,7 +1649,8 @@ Ext.define("questionaire", {
                 fetch: this.surveyDriver.getFetch(),
                 filters: this.surveyDriver.getFilters()
             },
-            columnCfgs: this.surveyDriver.getFetch()
+            columnCfgs: this.surveyDriver.getFetch(),
+            height: 450
         });
         grid.on('itemdblclick', this.launchSurvey, this);
     },
@@ -1112,7 +1658,7 @@ Ext.define("questionaire", {
         this.getSurveyBox().removeAll();
 
         this.logger.log('launchSurvey', record.get('FormattedID'));
-
+        this.down('rallygrid').hide();
         var surveyPanel = this.getSurveyBox().add({
             xtype: 'tssurveypanel',
             width: this.getWidth(),
@@ -1121,18 +1667,156 @@ Ext.define("questionaire", {
         });
         surveyPanel.on('submit', this.showSuccess, this);
         surveyPanel.on('failure', this.showErrorNotification, this);
+        surveyPanel.on('destroy', this.showGrid, this);
     },
-    showSuccess: function(record){
-        Rally.ui.notify.Notifier.showUpdate({artifact: record});
+    showGrid: function(){
+        if (this.down('rallygrid')){
+            this.down('rallygrid').show();
+        }
+    },
+    showSuccess: function(successObj){
+        if (!successObj){
+            successObj = "Success";
+        }
+
+        if (Ext.isString(successObj)){
+            Rally.ui.notify.Notifier.show({message: successObj});
+        } else {
+            Rally.ui.notify.Notifier.showUpdate({artifact: successObj});
+        }
+
     },
     showErrorNotification: function(msg){
         Rally.ui.notify.Notifier.showError({message: msg });
+    },
+    addAppMessage: function(msg){
+        this.add({
+            xtype: 'container',
+            html: Ext.String.format('<div class="survey-question">{0}</div>',msg)
+        });
     },
     getGridBox: function(){
         return this.down('#grid_box');
     },
     getSurveyBox: function(){
         return this.down('#survey_box');
+    },
+    getSurveyPanelConfig: function(){
+        var panelSetting = this.getSetting('panels');
+        if (!panelSetting){
+            return null;
+        }
+        var panels = [];
+        return panels;
+
+    },
+    getSurveyType: function(){
+        return this.getSetting('surveyType');
+    },
+    getSurveyTitle: function(){
+        return this.getSetting('surveyTitle');
+    },
+    isUserAdmin: function(){
+        return CA.agile.technicalservices.Toolbox.isUserWorkspaceAdmin(this.getContext());
+    },
+    getAppMode: function(){
+        return this.getSetting('appMode');
+    },
+    getSettingsFields: function(){
+        var isUserAdmin = this.isUserAdmin(),
+            appMode = this.getAppMode(),
+            labelWidth = 125,
+            settings = [{
+                xtype: 'container',
+                margin: '0 0 15 0',
+                html: '<div class="rally-upper-bold">App Mode</div>'
+            },{
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Admin',
+                labelAlign: 'right',
+                boxLabel: '<i>Edit the survey contents in this mode.<i>',
+                inputValue: this.MODE_ADMIN,
+                value: appMode == this.MODE_ADMIN,
+                labelWidth: labelWidth
+            },{
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Preview',
+                labelAlign: 'right',
+                boxLabel: '<i>(For Testing Only) The app will NOT modify Portfolio Items in this mode.</i>',
+                inputValue: this.MODE_PREVIEW,
+                value: appMode == this.MODE_PREVIEW,
+                labelWidth: labelWidth
+            }];
+
+        if (isUserAdmin){
+            settings.push({
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Publish (Admin Only)',
+                labelAlign: 'right',
+                boxLabel: '<i>(For Production Only) The app WILL modify Portfolio Items in this mode.</i>',
+                inputValue: this.MODE_PUBLISH,
+                value: appMode == this.MODE_PUBLISH,
+                labelWidth: labelWidth
+
+            });
+        }
+
+        settings.push({
+            xtype: 'container',
+            margin: '25 0 15 0',
+            html: '<div class="rally-upper-bold">Survey Configuration</div>'
+        });
+        settings.push({
+            xtype: 'rallytextfield',
+            fieldLabel: 'Survey Title',
+            labelAlign: 'right',
+            name: 'surveyTitle',
+            labelWidth: labelWidth,
+            width: 300
+        });
+        settings.push({
+            xtype: 'rallyportfolioitemtypecombobox',
+            fieldLabel: 'Portfolio Item Type',
+            labelAlign: 'right',
+            name: 'surveyType',
+            labelWidth: labelWidth,
+            value: this.getSurveyType(),
+            width: 300
+        });
+        settings.push({
+            xtype: 'textarea',
+            fieldLabel: 'Query',
+            name: 'queryFilter',
+            anchor: '100%',
+            cls: 'query-field',
+            margin: '0 70 0 0',
+            labelAlign: 'right',
+            labelWidth: labelWidth,
+            plugins: [
+                {
+                    ptype: 'rallyhelpfield',
+                    helpId: 194
+                },
+                'rallyfieldvalidationui'
+            ],
+            validateOnBlur: false,
+            validateOnChange: false,
+            validator: function(value) {
+                try {
+                    if (value) {
+                        Rally.data.wsapi.Filter.fromQueryString(value);
+                    }
+                    return true;
+                } catch (e) {
+                    return e.message;
+                }
+            }
+        });
+
+        return settings;
     },
     getOptions: function() {
         return [
@@ -1147,7 +1831,6 @@ Ext.define("questionaire", {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
     },
-    
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     }
@@ -1228,6 +1911,76 @@ Ext.define("questionaire", {
     font-size: 14px;
     margin-left: 15px;
     color: #000000;
+}
+
+.rally-upper-bold {
+    color: #222;
+    cursor: default;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 12px;
+    text-transform: uppercase;
+    vertical-align: top;
+}
+
+.rally-panel-header {
+    font-size: 10px;
+    background-color: #e6e6e6;
+}
+
+.checkbox-label {
+    vertical-align: bottom;
+    margin-left: 15px;
+}
+
+label.x-item-disabled {
+    color: #000!important;
+}
+
+.title-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    color: #888;
+}
+
+.config-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    color: #888;
+    margin: 10px;
+    width: 95%;
+}
+
+.button-no-border {
+    border-color: #fff!important;
+    background-color: #fff;
+    color: #888!important;
+    font-size: 14px;
+}
+
+.button-no-border .x-btn-inner-center{
+    color: #888!important;
+}
+
+.danger-button {
+    color: #B81B10;!important;
+    border-color: #B81B10!important;
+    background-color: #fff;
+    font-size: 14px;
+    border-width: 1px!important;
+    margin: 5px;
+}
+
+.danger-button .x-btn-inner-center {
+    color: #B81B10;!important;
+}
+
+.add-new-section {
+    color: #000!important;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    font-style: italic;
 }
     </style>
 
