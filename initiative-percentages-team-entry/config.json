@@ -5,6 +5,7 @@
     "story": "F166",
     "javascript": [
         "../common/src/javascript/wsapi-utilities.js",
+        "../common/src/javascript/ts-keys.js",
         "src/javascript/utils/__ts-info-link.js",
         "src/javascript/utils/__ts-logger.js",
         "src/javascript/utils/_ts-date-calculator.js",

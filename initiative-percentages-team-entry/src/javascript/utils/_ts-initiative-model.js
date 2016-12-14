@@ -1,8 +1,5 @@
 Ext.define('TSModel',{
     extend: 'Ext.data.Model',
-    statics: {
-        keyPrefix: 'ca.ts.percentage',
-    },
 
     fields: [
         { name: '_ref', type: 'string' },
@@ -29,7 +26,7 @@ Ext.define('TSModel',{
     
     getKey: function() {
             var key = Ext.String.format("{0}.{1}.{2}",
-                TSModel.keyPrefix,
+                TSKeys.percentageKeyPrefix,
                 this.get('__monthStart'),
                 this.get('ObjectID')
             );

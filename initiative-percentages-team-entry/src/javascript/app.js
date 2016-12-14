@@ -257,7 +257,7 @@ Ext.define("TSInitiativePercentageEntry", {
     
     _fetchAlreadyEnteredData: function(initiatives) {
         var deferred = Ext.create('Deft.Deferred'),
-            key_prefix = TSModel.keyPrefix,
+            key_prefix = TSKeys.percentageKeyPrefix,
             month_start = this.monthIsoForEntry;
         
         var config = {

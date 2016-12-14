@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 16:27:26 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 16:35:41 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 16:27:26 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 16:35:41 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 22034843278;
+        var CHECKSUM = 22148674674;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -210,6 +210,13 @@ Ext.define('CA.agile.technicalservices.util.WsapiUtils',{
     }
     
 });
+Ext.define('TSKeys',{
+    singleton: true,
+    
+    percentageKeyPrefix: 'ca.ts.percentage'
+    
+});
+
 /**
  * A link that pops up a version dialog box
  */
@@ -469,9 +476,6 @@ Ext.define('TSDateCalculator',{
 });
 Ext.define('TSModel',{
     extend: 'Ext.data.Model',
-    statics: {
-        keyPrefix: 'ca.ts.percentage',
-    },
 
     fields: [
         { name: '_ref', type: 'string' },
@@ -498,7 +502,7 @@ Ext.define('TSModel',{
     
     getKey: function() {
             var key = Ext.String.format("{0}.{1}.{2}",
-                TSModel.keyPrefix,
+                TSKeys.percentageKeyPrefix,
                 this.get('__monthStart'),
                 this.get('ObjectID')
             );
@@ -830,7 +834,7 @@ Ext.define("TSInitiativePercentageEntry", {
     
     _fetchAlreadyEnteredData: function(initiatives) {
         var deferred = Ext.create('Deft.Deferred'),
-            key_prefix = TSModel.keyPrefix,
+            key_prefix = TSKeys.percentageKeyPrefix,
             month_start = this.monthIsoForEntry;
         
         var config = {
