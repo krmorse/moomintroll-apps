@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 16:13:35 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 16:27:26 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 16:13:35 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 16:27:26 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 21934939969;
+        var CHECKSUM = 22034843278;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -822,7 +822,8 @@ Ext.define("TSInitiativePercentageEntry", {
             model: this.PortfolioItemTypes[1].get('TypePath'),
             filters: filters,
             fetch: ['FormattedID','Name','Notes','Description','Project'],
-            enablePostGet: true
+            enablePostGet: true,
+            context: { project: null }
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
     },
@@ -838,7 +839,8 @@ Ext.define("TSInitiativePercentageEntry", {
             filters: [
                 {property:'Name',operator:'contains',value: key_prefix + "." + month_start},
                 {property:'Project', value: this.selectedProject}
-            ]
+            ],
+            context: { project: null }
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config).then({

@@ -249,7 +249,8 @@ Ext.define("TSInitiativePercentageEntry", {
             model: this.PortfolioItemTypes[1].get('TypePath'),
             filters: filters,
             fetch: ['FormattedID','Name','Notes','Description','Project'],
-            enablePostGet: true
+            enablePostGet: true,
+            context: { project: null }
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
     },
@@ -265,7 +266,8 @@ Ext.define("TSInitiativePercentageEntry", {
             filters: [
                 {property:'Name',operator:'contains',value: key_prefix + "." + month_start},
                 {property:'Project', value: this.selectedProject}
-            ]
+            ],
+            context: { project: null }
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config).then({
