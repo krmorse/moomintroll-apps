@@ -29,7 +29,7 @@ Ext.define('TSModel',{
     
     getKey: function() {
             var key = Ext.String.format("{0}.{1}.{2}",
-                this.keyPrefix,
+                TSModel.keyPrefix,
                 this.get('__monthStart'),
                 this.get('ObjectID')
             );
@@ -68,10 +68,11 @@ Ext.define('TSModel',{
         
         var pref = this.get('__pref');
         if ( Ext.isEmpty(pref) ) {
+            console.log("Creating value for new pref:", json_value);
             return this._createPreference(json_value);
         } else {
+            console.log("Saving value for existing pref:", json_value);
             pref.set('Value',json_value);
-            console.log('saving new value:', json_value);
             return pref.save();
         }
     },

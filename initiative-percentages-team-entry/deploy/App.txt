@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 15:36:16 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 16:13:35 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 15:36:16 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 16:13:35 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 21755785148;
+        var CHECKSUM = 21934939969;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -498,7 +498,7 @@ Ext.define('TSModel',{
     
     getKey: function() {
             var key = Ext.String.format("{0}.{1}.{2}",
-                this.keyPrefix,
+                TSModel.keyPrefix,
                 this.get('__monthStart'),
                 this.get('ObjectID')
             );
@@ -537,10 +537,11 @@ Ext.define('TSModel',{
         
         var pref = this.get('__pref');
         if ( Ext.isEmpty(pref) ) {
+            console.log("Creating value for new pref:", json_value);
             return this._createPreference(json_value);
         } else {
+            console.log("Saving value for existing pref:", json_value);
             pref.set('Value',json_value);
-            console.log('saving new value:', json_value);
             return pref.save();
         }
     },
@@ -929,14 +930,14 @@ Ext.define("TSInitiativePercentageEntry", {
                                 
                                 // get the values in the store
                                 for ( var i=0; i<count; i++ ) {
-                                    var record = store.getAt(i);
-                                    var row_value = record.get('__percentage') || 0;
+                                    var stored_record = store.getAt(i);
+                                    var row_value = stored_record.get('__percentage') || 0;
                                     total = total + row_value;
                                 }
                                 // adjust for change (original value is already 
                                 // in the store so the loop above pulled it, but we
                                 // want to replace it with the new value
-                                var original_value = this.originalValue || 0;
+                                var original_value = record.get("__percentage") || 0;
                                 
                                 total = total - original_value + parseFloat(value,10);
                                 

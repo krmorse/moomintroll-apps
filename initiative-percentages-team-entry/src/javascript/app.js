@@ -357,14 +357,14 @@ Ext.define("TSInitiativePercentageEntry", {
                                 
                                 // get the values in the store
                                 for ( var i=0; i<count; i++ ) {
-                                    var record = store.getAt(i);
-                                    var row_value = record.get('__percentage') || 0;
+                                    var stored_record = store.getAt(i);
+                                    var row_value = stored_record.get('__percentage') || 0;
                                     total = total + row_value;
                                 }
                                 // adjust for change (original value is already 
                                 // in the store so the loop above pulled it, but we
                                 // want to replace it with the new value
-                                var original_value = this.originalValue || 0;
+                                var original_value = record.get("__percentage") || 0;
                                 
                                 total = total - original_value + parseFloat(value,10);
                                 
