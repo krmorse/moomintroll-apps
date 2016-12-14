@@ -22,3 +22,8 @@
     font-size: 18px;
     font-family: ProximaNova,Helvetica,Arial;
 }
+
+.x-grid-row-summary .x-grid-cell{
+    border-style: solid;
+    border-top: thick double #000;
+}

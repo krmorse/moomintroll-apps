@@ -8,7 +8,7 @@
         "../common/src/javascript/ts-keys.js",
         "src/javascript/utils/__ts-info-link.js",
         "src/javascript/utils/__ts-logger.js",
-        "src/javascript/utils/_ts-date-calculator.js",
+        "../common/src/javascript/_ts-date-calculator.js",
         "src/javascript/utils/_ts-initiative-model.js",
         "src/javascript/app.js"
     ]

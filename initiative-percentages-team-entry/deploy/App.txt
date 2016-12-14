@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 16:35:41 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 13 2016 17:04:45 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 16:35:41 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 17:04:45 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 22148674674;
+        var CHECKSUM = 22310753313;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1102,6 +1102,11 @@ Ext.define("TSInitiativePercentageEntry", {
     color: #888;
     font-size: 18px;
     font-family: ProximaNova,Helvetica,Arial;
+}
+
+.x-grid-row-summary .x-grid-cell{
+    border-style: solid;
+    border-top: thick double #000;
 }
     </style>
 

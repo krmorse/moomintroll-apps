@@ -2,9 +2,22 @@
 
 ## Summary/Description
 
-![screenshot](./images/screenshot.png "This is an example")
+![screenshot](./images/screenshot.png "Entry")
+
+Chooses a series of initiatives for the stories that were in some active state during the preceding month.  
+
+App Settings allows for the configuration of a query applied to the initiatives and days before and after the beginning of the 
+month to allow data entry.  
+
+![screenshot](./images/screenshot2.png "Out of Date Range")
+
+Data entry is limited to users who are workspace or sub admins and users who are owners of leaf node projects.
+
 
 ## Development Notes
+
+* Percentages are saved as preferences.  The key to the preference has a prefix, iso for first day of the month, and initiative oid.  
+* Value of the pref contains the newest value, who changed it last, and when it was last changed.  Other history is not kept.
 
 
 ### First Load
