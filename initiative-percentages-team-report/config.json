@@ -1,0 +1,15 @@
+{
+    "name": "TS Initiative Percentage View",
+    "sdk": "2.1",
+    "className": "TSInitiativePercentageView",
+    "story": "F166",
+    "javascript": [
+        "../common/src/javascript/wsapi-utilities.js",
+        "../common/src/javascript/ts-keys.js",
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "../common/src/javascript/_ts-date-calculator.js",
+        "src/javascript/utils/_ts-initiative-model.js",
+        "src/javascript/app.js"
+    ]
+}
