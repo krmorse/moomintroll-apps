@@ -3,12 +3,12 @@
 <head>
     <title>Initiative Team Allocation</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 01 2016 13:43:58 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Dec 08 2016 07:32:54 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 01 2016 13:43:58 GMT-0700 (MST)";
-        var BUILDER = "kcorkan";
-        var CHECKSUM = 18472118337;
+        var APP_BUILD_DATE = "Thu Dec 08 2016 07:32:54 GMT-0800 (PST)";
+        var BUILDER = "jmartin";
+        var CHECKSUM = 18472121221;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
