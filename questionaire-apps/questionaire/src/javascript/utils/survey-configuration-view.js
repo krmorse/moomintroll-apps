@@ -436,11 +436,10 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
 
         }, this);
 
-
         return surveyConfig;
     },
-    getSectionText: function(sectionId){
-        return this.down(this.getSectionTextItemId(sectionId, -1, true)).getValue();
+    getSectionText: function(sectionId, idx){
+        return this.down(this.getSectionTextItemId(sectionId, idx, true)).getValue();
     },
     getSectionTextItemId: function(sectionId, idx, includeHash){
         return this.getItemId(sectionId,this.sectionTextSuffix,idx,includeHash);
@@ -451,6 +450,10 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     },
     getSectionField: function(sectionId, idx){
         return this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue();
+    },
+    getSectionFieldValue: function(sectionId, idx){
+        return this.down(this.getSectionFieldValueItemId(sectionId, idx, true)) &&
+            this.down(this.getSectionFieldValueItemId(sectionId, idx, true)).getValue() || null;
     },
     getSectionTypeItemId: function(sectionId, includeHash){
         return this.getItemId(sectionId,this.sectionTypeSuffix,-1,includeHash);
@@ -481,6 +484,15 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
         return itemId;
     },
-    getSectionOptions: function(sectionId){}
+    getSectionOptions: function(sectionId){
+        var options = this.surveyPanelCfg.panels[sectionId].options || [];
+        for (var i=0; i< options.length; i++){
+            options[i].text = this.getSectionText(sectionId, i);
+            options[i].nextSection = this.down(this.getSectionNextSectionItemId(sectionId, i, true)).getValue();
+            options[i].field = this.getSectionField(sectionId, i);
+            options[i].value = this.getSectionFieldValue(sectionId, i);
+        }
+        return options;
+    }
 
 });

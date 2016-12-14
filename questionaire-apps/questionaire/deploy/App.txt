@@ -3,13 +3,13 @@
 <head>
     <title>Questionaire</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 21:44:45 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 13 2016 21:56:10 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 21:44:45 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Tue Dec 13 2016 21:56:10 GMT-0700 (MST)";
         var STORY    = "F166";
         var BUILDER  = "kcorkan";
-        var CHECKSUM = 73700175825;
+        var CHECKSUM = 75848343971;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -924,11 +924,10 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
 
         }, this);
 
-
         return surveyConfig;
     },
-    getSectionText: function(sectionId){
-        return this.down(this.getSectionTextItemId(sectionId, -1, true)).getValue();
+    getSectionText: function(sectionId, idx){
+        return this.down(this.getSectionTextItemId(sectionId, idx, true)).getValue();
     },
     getSectionTextItemId: function(sectionId, idx, includeHash){
         return this.getItemId(sectionId,this.sectionTextSuffix,idx,includeHash);
@@ -939,6 +938,10 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     },
     getSectionField: function(sectionId, idx){
         return this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue();
+    },
+    getSectionFieldValue: function(sectionId, idx){
+        return this.down(this.getSectionFieldValueItemId(sectionId, idx, true)) &&
+            this.down(this.getSectionFieldValueItemId(sectionId, idx, true)).getValue() || null;
     },
     getSectionTypeItemId: function(sectionId, includeHash){
         return this.getItemId(sectionId,this.sectionTypeSuffix,-1,includeHash);
@@ -969,7 +972,16 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
         return itemId;
     },
-    getSectionOptions: function(sectionId){}
+    getSectionOptions: function(sectionId){
+        var options = this.surveyPanelCfg.panels[sectionId].options || [];
+        for (var i=0; i< options.length; i++){
+            options[i].text = this.getSectionText(sectionId, i);
+            options[i].nextSection = this.down(this.getSectionNextSectionItemId(sectionId, i, true)).getValue();
+            options[i].field = this.getSectionField(sectionId, i);
+            options[i].value = this.getSectionFieldValue(sectionId, i);
+        }
+        return options;
+    }
 
 });
 Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
