@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Questionaire</title>
+    <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Tue Dec 13 2016 21:56:10 GMT-0700 (MST) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Tue Dec 13 2016 21:56:10 GMT-0700 (MST)";
+        var STORY    = "F166";
+        var BUILDER  = "kcorkan";
+        var CHECKSUM = 75848343971;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+    <!-- our highcharts (needed so that we can add patterns) -->
+    <script type="text/javascript" src="/apps/2.1/lib/analytics/analytics-all.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER  = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            var build_html = Ext.String.format("Built on: {0} <br/>Built by: {1}",
+                APP_BUILD_DATE,
+                BUILDER);
+                
+            if ( STORY ) {
+                build_html = build_html + "<br/>Source story: " + STORY;
+            }
+                
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: build_html
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('CA.agile.technicalservices.control.PanelPicker',{
+    extend: 'Ext.container.Container',
+    alias: 'widget.panelpicker',
+
+    layout: 'hbox',
+    allowEndOfSurvey: true,
+
+    padding: 0,
+
+    config: {
+        valueField: 'value',
+        displayField: 'name'
+    },
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+    initComponent: function(){
+
+       var data  = [{
+            name: '-- Submit Form --',
+            value: null
+        }];
+
+        var pastCurrentSection = false;
+        Ext.Array.each(this.keys, function(key){
+            if (key == this.currentSection){
+                pastCurrentSection = true;
+                return true;
+            }
+            if (pastCurrentSection){
+                data.push({
+                    name: Ext.String.format('Section [{0}]', key),
+                    value: key
+                });
+            }
+
+        }, this);
+
+        var panelStore = Ext.create('Rally.data.wsapi.Store',{
+            data: data,
+            fields: ['name', 'value']
+        }, this);
+
+        var config = Ext.apply(this.config, {
+            xtype: 'rallycombobox',
+            store: panelStore
+        });
+
+        this.items = [config];
+        this.callParent(arguments);
+
+    },
+    getValue: function(){
+        return this.down('rallycombobox').getValue();
+        //return this.down('#' + this.itemId).getValue();
+    }
+});
+Ext.define('CA.agile.technicalservices.Survey',{
+    constructor: function(config){
+        Ext.apply(this, config);
+        this.questionPath = [];
+        this.panelPath = [];
+        console.log('CA.agile.technicalservices.Survey', this);
+    },
+    getTitle: function(){
+        return this.title;
+    },
+    getInstructions: function(){
+        return this.instructions;
+    },
+    setRecord: function(record){
+        this.record = record;
+    },
+    getID: function(){
+        console.log('getID', this.record.get('FormattedID'));
+        return this.record && this.record.get('FormattedID') || "Unknown";
+    },
+    getRootKey: function(){
+        return Ext.Object.getKeys(this.questionMap)[0];
+    },
+    getInitialContainerConfig: function(){
+        var containerKey = this.startContainer;
+        this.questionPath = [containerKey];
+        return this.getQuestionConfig(containerKey);
+    },
+    getNextContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
+        //get the next container in the tree.
+        this.questionPath.push(selectedChildKey);
+        this.questions[selectedChildKey].value = containerValue;
+        return this.getQuestionConfig(selectedChildKey);
+    },
+    getPreviousContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
+        if (containerValue){
+            this.questions[selectedChildKey].value = containerValue;
+        }
+        //now remove the last element from the path
+        this.questionPath.pop();
+        return this.getQuestionConfig(this.questionPath[this.questionPath.length-1]);
+    },
+    getQuestionMap: function(questionKey){
+        var map = this.questionMap;
+        Ext.Array.each(this.questionPath, function(key){
+            map = map[key] || null;
+            if (!map){ return false; }
+            if (questionKey === key){
+                return false;
+            }
+        });
+        return map;
+    },
+    getQuestionConfig: function(key){
+        var question = this.questions[key],
+            hasChildren = false;
+        if (!question){
+            return null;
+        }
+
+        var childrenKeys = question.children || [],
+            children = [];
+        Ext.Array.map(childrenKeys, function(c){
+            var child = this.questions[c];
+            if (child){
+                child.key = c;
+                hasChildren = (child.children && child.children.length > 0);
+                child.value = (question.value === child.key);
+                children.push(child);
+            }
+        }, this);
+
+        return {
+            xtype: question.childType,
+            instructions: question.childInstructions,
+            questions: children,
+            record: this.record,
+            key: key,
+            hasChildren: hasChildren
+        };
+    },
+    submit: function(containerValue){
+        var deferred = Ext.create('Deft.Deferred');
+       // this.panelPath.push(selectedChildKey);
+        this.setValue(containerValue);
+       // this.questionPath.push(selectedChildKey);
+       // this.questions[selectedChildKey].value = containerValue;
+
+        var updates = {};
+        Ext.Array.each(this.panelPath, function(key){
+            var panel = this.panels[key];
+            if (panel.updates){
+                Ext.Object.each(panel.updates, function(field,value){
+                    if (Ext.isString(value)){
+                        value = value.replace(/\{value}/g, panel.value);
+                    }
+                    updates[field] = value
+                });
+            }
+            if (panel.options){
+                Ext.Array.each(panel.options, function(opt){
+                    if (opt.nextKey === panel.value && opt.updates){
+                        Ext.Object.each(opt.updates, function(field,value){
+                            updates[field] = value
+                        });
+                    }
+                });
+            }
+        }, this);
+        //Ext.Array.each(this.questionPath, function(key){
+        //    var question = this.questions[key];
+        //    if (question.updates){
+        //        Ext.Object.each(question.updates, function(field,value){
+        //            if (Ext.isString(value)){
+        //                value = value.replace(/\{value}/g, question.value);
+        //            }
+        //            updates[field] = value
+        //        });
+        //    }
+        //}, this);
+
+        console.log('submit', updates);
+        Ext.Object.each(updates, function(field,value){
+            this.record.set(field, value);
+        }, this);
+
+        this.record.save().then({
+            success: function(record){
+                deferred.resolve(record);
+            },
+            failure: function(){
+                deferred.reject('Failed to save changes');
+            },
+            scope: this
+        });
+        return deferred;
+    },
+    isFirstButton: function(){
+        return (this.questionPath.length === 1);
+    },
+    isFirst: function(){
+        return (this.panelPath.length === 1);
+    },
+    isLast: function(selectedValue){
+        var key = this.getCurrentPanelKey();
+
+        var panelCfg = this.panels[key],
+            isLast = true;
+
+        console.log('isLast', key, panelCfg, selectedValue);
+        if (panelCfg){
+            if (panelCfg.nextKey){
+                return false;
+            }
+
+            Ext.Array.each(panelCfg.options || [], function(opt){
+                if (opt.nextKey && this.panels[opt.nextKey] &&
+                    (!selectedValue || selectedValue === opt.nextKey)){
+                    isLast = false;
+                }
+                return isLast;
+            }, this);
+        }
+        return isLast;
+    },
+    setValue: function(containerValue){
+        var containerKey = this.getCurrentPanelKey();
+        this.panels[containerKey].value = containerValue;
+    },
+
+    getPanelCfg: function(key){
+        if (!key){
+            key = this.startContainer;
+            this.panelPath = [];
+        }
+        if (!Ext.Array.contains(this.panelPath, key)){
+            this.panelPath.push(key);
+        }
+        return this.panels[key];
+    },
+    getCurrentPanelKey: function(){
+        return this.panelPath[this.panelPath.length-1];
+    },
+    getPreviousPanelCfg: function(){
+        this.panelPath.pop();
+        var key = this.getCurrentPanelKey();
+        return this.getPanelCfg(key);
+    }
+});
+Ext.define('CA.agile.technicalservices.Toolbox',{
+    singleton: true,
+
+    isUserWorkspaceAdmin: function(context){
+
+        var isAdmin = false,
+            permissions = context.getPermissions().userPermissions,
+            currentWorkspace = context.getWorkspace().ObjectID;
+
+        Ext.Array.each(permissions, function(permission) {
+            if (permission.Role === "Subscription Admin") {
+                isAdmin = true;
+                return false;
+            }
+            var permissionOid = Rally.util.Ref.getOidFromRef(permission._ref);
+            if (permission.Role === "Workspace Admin" && permissionOid === currentWorkspace) {
+                isAdmin = true;
+                return false;
+            }
+        });
+        return isAdmin;
+    }
+});
+Ext.define('CA.agile.technicalservices.survey.Settings',{
+    singleton: true,
+
+});
+Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
+    extend: 'Ext.panel.Panel',
+    alias: 'widget.surveyconfigurationview',
+    logger: new Rally.technicalservices.Logger(),
+    MAX_TITLE_LEN: 100,
+
+    sectionTypeSuffix: '-type-',
+    sectionTextSuffix: '-text-',
+    sectionNextSectionSuffix: '-next-section-',
+    deleteSectionSuffix: '-delete-section',
+    sectionFieldSuffix: '-field-',
+    sectionExampleValueSuffix: '-example-value',
+    sectionUpdateContainerSuffix: '-update-container-' ,
+    sectionFieldValueSuffix: '-field-value-',
+
+    layout: 'accordion',
+    flex: 1,
+    width: 400,
+    /**
+     *  Configurations:
+     *  surveyType: artifact type of the survey
+     *  surveyPanels: array of panels
+     **/
+
+    initComponent: function(){
+        this.items = this._getSections();
+
+        this.callParent(arguments);
+    },
+    _getSections: function(){
+        var sections = [],
+            idx = 0;
+        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionID, section){
+            sections.push(this._getSection(section, idx++));
+        }, this);
+
+        sections.push(this._getAddNewSection());
+
+        return sections;
+    },
+    _getSectionKeys: function(){
+        return Ext.Object.getKeys(this.surveyPanelCfg.panels);
+    },
+    _getAddNewSection: function(){
+        return {
+            title: '<div class="add-new-section">Add a New Section...</div>',
+            layout: 'hbox',
+            items: [{
+                xtype: 'rallytextfield',
+                fieldLabel: 'Section Id',
+                labelAlign: 'top',
+                labelCls: 'rally-upper-bold',
+                itemId: 'new-section-id',
+                emptyText: 'Please enter a unique section id (25 characters or less)...',
+                maxLength: 25,
+                width: 300,
+                margin: 10,
+                height: 35
+            },{
+                xtype:'rallybutton',
+                text: 'Add Section',
+                margin: '25 10 10 10',
+                handler: this.addSection,
+                scope: this
+            }],
+            collapsed: true
+        };
+    },
+    _getSection: function(sectionConfig, idx){
+        console.log('sectionConfig', sectionConfig, idx);
+        var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
+            type = sectionConfig.type;
+
+        return {
+            title: title,
+            flex: 1,
+            items: this._getSectionItems(sectionConfig, idx),
+            itemId: sectionConfig.id,
+            collapsed: sectionConfig.id !== 'root'
+        };
+    },
+    _getSectionItems: function(sectionConfig, idx){
+
+        var type = sectionConfig.type;
+
+        var sectionItems = [{
+            xtype: 'textareafield',
+            value: sectionConfig.text,
+            itemId: this.getSectionTextItemId(sectionConfig.id),
+            fieldLabel: 'Question',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            labelSeparator: '',
+            grow: true,
+            width: '90%',
+            margin: 10
+        },{
+            xtype: 'radiogroup',
+            itemId: this.getSectionTypeItemId(sectionConfig.id),
+            fieldLabel: 'Question Type',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            labelSeparator: '',
+            columns: 4,
+            width: '90%',
+            margin: 10,
+            items: [
+                { boxLabel: 'Multiple Choice', name: 'questionType', inputValue: 'choice', checked: type == 'choice' },
+                { boxLabel: 'Text Entry Field', name: 'questionType', inputValue: 'text', checked: type == 'text'}
+            ],
+            listeners: {
+                scope: this,
+                change: this.changeType
+            }
+        }];
+
+        if (type == 'text'){
+            sectionItems = sectionItems.concat(this._getTextTypeItems(sectionConfig));
+        }
+
+        if (type == 'choice'){
+            sectionItems = sectionItems.concat(this._getChoiceTypeItems(sectionConfig));
+        }
+
+        if (sectionConfig.id !== 'root'){
+            sectionItems.push({
+                xtype: 'container',
+                layout: 'hbox',
+                items: [{
+                    xtype: 'container',
+                    flex: 1
+                },{
+                    xtype: 'rallybutton',
+                    text: 'Delete Section',
+                    iconCls: 'icon-warning',
+                    cls: 'danger-button',
+                    itemId: sectionConfig.id + this.deleteSectionSuffix,
+                    handler: this.deleteSection,
+                    scope: this
+                }]
+            });
+        }
+
+        return sectionItems;
+    },
+    _getTextTypeItems: function(sectionConfig){
+
+        var model = this.surveyPanelCfg.model,
+            field = sectionConfig.field;
+
+        var nextSection = null,
+            sectionKeys = this._getSectionKeys();
+        if (sectionConfig.nextSection && Ext.Array.contains(sectionKeys, sectionConfig.nextSection)){
+            nextSection = sectionConfig.nextSection;
+        }
+
+        return [{
+            xtype: 'rallyfieldcombobox',
+            fieldLabel: 'Text Entry Field Name',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            itemId: this.getSectionFieldItemId(sectionConfig.id),
+            width: 300,
+            margin: 10,
+            model: model,
+            value: field,
+            allowNoEntry: true,
+            _isNotHidden: this.shouldShowTextField
+
+        },{
+            xtype: 'textareafield',
+            value: sectionConfig.exampleValue || '',
+            fieldLabel: 'Example Value',
+            labelAlign: 'top',
+            labelCls: 'rally-upper-bold',
+            itemId: this.getSectionExampleValueItemId(sectionConfig.id),
+            labelSeparator: '',
+            grow: true,
+            width: '90%',
+            margin: 10
+        },{
+            xtype: 'panelpicker',
+            itemId: this.getSectionNextSectionItemId(sectionConfig.id),
+            fieldLabel: 'Next Section',
+            labelCls: 'rally-upper-bold',
+            labelAlign: 'top',
+            value: nextSection,
+            keys: sectionKeys,
+            margin: 5,
+            currentSection: sectionConfig.id
+        }];
+    },
+    _getChoiceTypeItems: function(sectionConfig, sectionIndex){
+        var choiceItems = [{
+                xtype: 'container',
+                layout:'column',
+                width: '100%',
+                padding: 5,
+                items:[{
+                    xtype: 'container',
+                    columnWidth:.05,
+                    html: '&nbsp;'
+                },{
+                    xtype:'container',
+                    html: '<div class="rally-upper-bold">Choice Option Text</div>',
+                    columnWidth:.5
+                },{
+                    xtype: 'container',
+                    columnWidth:.225,
+                    html: '<div class="rally-upper-bold" style="text-align:center;">Next Section</div>'
+                },{
+                    xtype: 'container',
+                    columnWidth:.225,
+                    html: '<div class="rally-upper-bold" style="text-align:center;">Update Action</div>'
+                }]
+            }];
+
+        var idx = 0,
+            sectionKeys = this._getSectionKeys();
+
+
+        var model = this.surveyPanelCfg.model;
+
+
+        Ext.Array.each(sectionConfig.options || [], function(option){
+
+            var nextSection = null;
+            if (option.nextSection && Ext.Array.contains(sectionKeys, option.nextSection)){
+                nextSection = option.nextSection;
+            }
+
+            choiceItems.push({
+                xtype: 'container',
+                layout:'column',
+                width: '100%',
+                padding: 5,
+                items:[{
+                    xtype: 'rallybutton',
+                    iconCls: 'icon-delete',
+                    cls: 'button-no-border',
+                    itemId: sectionConfig.id + '-delete-' + idx,
+                    columnWidth:.05,
+                    handler: this.deleteOption,
+                    scope: this
+                },{
+                    xtype:'textareafield',
+                    grow: true,
+                    fieldLabel: '',
+                    itemId: this.getSectionTextItemId(sectionConfig.id, idx),
+                    columnWidth:.5,
+                    value: option.text
+                },{
+                    xtype: 'panelpicker',
+                    itemId: this.getSectionNextSectionItemId(sectionConfig.id,idx),
+                    fieldLabel: '',
+                    margin: '0 10 5 10',
+                    value: nextSection,
+                    keys: sectionKeys,
+                    currentSection: sectionConfig.id,
+                    columnWidth:.2
+                },{
+
+                    xtype: 'container',
+                    itemId: this.getSectionUpdateContainerItemId(sectionConfig.id, idx),
+                    columnWidth:.25,
+                    items: [{
+                        xtype: 'rallyfieldcombobox',
+                        fieldLabel: 'Field',
+                        labelAlign: 'right',
+                        labelWidth: 75,
+                        itemId: this.getSectionFieldItemId(sectionConfig.id, idx++),
+                        model: model,
+                        value: option.field || null,
+                        allowNoEntry: true,
+                        noEntryText: '-- None --',
+                        _isNotHidden: this.shouldShowUpdateField,
+                        listeners: {
+                            select: this.updateFieldValueOptions,
+                            scope: this
+                        }
+                    }]
+                }]
+            });
+
+        }, this);
+
+        choiceItems.push({
+            xtype:'rallybutton',
+            iconCls: 'icon-add',
+            itemId: sectionConfig.id + '-addOption',
+            text: 'Add Choice',
+            cls: 'button-no-border',
+            margin: 5,
+            handler: this.addOption,
+            scope: this
+        });
+
+        return  choiceItems;
+    },
+    addOption: function(btn){
+        var optionInfo = btn.itemId.replace('-addOption', '');
+        if (optionInfo){
+            var section = this.surveyPanelCfg.panels[optionInfo];
+            section.options.push({
+                text: 'New Option text',
+                nextSection: null
+            });
+            this.refreshSection(optionInfo);
+        }
+    },
+    deleteOption: function(btn){
+        var optionInfo = btn.itemId.split('-delete-');
+        if (optionInfo && optionInfo.length == 2){
+            var section = this.surveyPanelCfg.panels[optionInfo[0]];
+            section.options.splice(optionInfo[1],1);
+            this.refreshSection(optionInfo[0]);
+        }
+    },
+    refreshSection: function(sectionId){
+
+        var sectionCmp = this.down('#' + sectionId);
+        if (sectionCmp){
+            sectionCmp.removeAll();
+            sectionCmp.add(this._getSectionItems(this.surveyPanelCfg.panels[sectionId]));
+            sectionCmp.doLayout();
+        }
+    },
+    refreshSurvey: function(){
+        this.removeAll();
+        this.add(this._getSections());
+        this.doLayout();
+    },
+    deleteSection: function(btn){
+        var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
+        if (sectionId){
+            delete this.surveyPanelCfg.panels[sectionId];
+        }
+        this.refreshSurvey();
+    },
+    addSection: function(){
+        var sectionId = this.down('#new-section-id') && this.down('#new-section-id').getValue();
+        if (!sectionId){
+            Rally.ui.notify.Notifier.showError({message: 'Section ID cannot be blank.'});
+            return;
+        }
+
+        if (Ext.Array.contains(this._getSectionKeys(), sectionId)){
+            Rally.ui.notify.Notifier.showError({message: 'Section ID must be unique.  Please enter a unique section ID.'});
+            return;
+        }
+
+        this.surveyPanelCfg.panels[sectionId] = {
+            type: 'choice',
+            text: '',
+            id: sectionId,
+            options: []
+        };
+        this.refreshSurvey();
+    },
+    changeType: function(group, newValue){
+        var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
+
+        if (newValue && newValue.questionType){
+            this.surveyPanelCfg.panels[sectionId].type = newValue.questionType;
+            this.refreshSection(sectionId);
+        }
+    },
+    updateFieldValueOptions: function(cb){
+
+        var info = cb.itemId.split(this.sectionFieldSuffix);
+        var sectionId = info[0],
+            idx = info[1],
+            valueItemId = this.getSectionFieldValueItemId(sectionId, idx),
+            containerId = this.getSectionUpdateContainerItemId(sectionId, idx);
+
+        var fieldDef = cb && cb.getRecord() && cb.getRecord().get('fieldDefinition');
+
+        var cfg = null;
+        if (fieldDef && fieldDef.attributeDefinition){
+            cfg = fieldDef.editor || {
+                    xtype: 'rallytextfield'
+                };
+            cfg.itemId = valueItemId;
+            cfg.fieldLabel = 'Set to Value';
+            cfg.labelAlign = 'right';
+            cfg.labelWidth = 75;
+            cfg.width = cb.getWidth();
+        }
+
+        var ct = this.down('#' + containerId);
+        if (ct.down('#' + valueItemId)){
+            ct.down('#' + valueItemId).destroy();
+        }
+        if (cfg){
+            ct.add(cfg);
+        }
+    },
+    shouldShowUpdateField: function(field){
+        if (field.readOnly){ return false; }
+
+        if (field && field.attributeDefinition){
+            if (field.attributeDefinition.AttributeType === 'STRING' || field.attributeDefinition.AttributeType === 'TEXT'){
+                return true;
+            }
+        }
+        return false;
+    },
+    shouldShowTextField: function(field){
+
+        if (field.readOnly){ return false; }
+
+        if (field && field.attributeDefinition){
+            if (field.attributeDefinition.AttributeType === 'STRING' || field.attributeDefinition.AttributeType === 'TEXT'){
+                if (field.attributeDefinition.Constrained || field.constrained || field.editor.xtype === 'rallycombobox'){
+                    return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    },
+    getSurveyConfig: function(){
+        var surveyConfig = this.surveyPanelCfg;
+
+        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionId, section){
+            section.text = this.getSectionText(sectionId);
+            section.type = this.getSectionType(sectionId);
+            if (section.type === 'choice'){
+                section.options = this.getSectionOptions(sectionId);
+            } else {
+                section.options = [];
+                section.field = this.getSectionField(sectionId);
+                section.exampleValue = this.down(this.getSectionExampleValueItemId(sectionId, true)).getValue();
+                section.nextSection = this.down(this.getSectionNextSectionItemId(sectionId, -1, true)).getValue();
+            }
+
+        }, this);
+
+        return surveyConfig;
+    },
+    getSectionText: function(sectionId, idx){
+        return this.down(this.getSectionTextItemId(sectionId, idx, true)).getValue();
+    },
+    getSectionTextItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionTextSuffix,idx,includeHash);
+    },
+    getSectionType: function(sectionId){
+        return this.down(this.getSectionTypeItemId(sectionId, true)).getValue() &&
+            this.down(this.getSectionTypeItemId(sectionId, true)).getValue().questionType;
+    },
+    getSectionField: function(sectionId, idx){
+        return this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue();
+    },
+    getSectionFieldValue: function(sectionId, idx){
+        return this.down(this.getSectionFieldValueItemId(sectionId, idx, true)) &&
+            this.down(this.getSectionFieldValueItemId(sectionId, idx, true)).getValue() || null;
+    },
+    getSectionTypeItemId: function(sectionId, includeHash){
+        return this.getItemId(sectionId,this.sectionTypeSuffix,-1,includeHash);
+    },
+    getSectionFieldItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionFieldSuffix,idx,includeHash);
+    },
+    getSectionFieldValueItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionFieldValueSuffix,idx,includeHash);
+    },
+    getSectionExampleValueItemId: function(sectionId,includeHash){
+        return this.getItemId(sectionId, this.sectionExampleValueSuffix,-1,includeHash);
+    },
+    getSectionNextSectionItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId,this.sectionNextSectionSuffix,idx,includeHash);
+    },
+    getSectionUpdateContainerItemId: function(sectionId, idx, includeHash){
+        return this.getItemId(sectionId, this.sectionUpdateContainerSuffix, idx, includeHash);
+    },
+    getItemId: function(sectionId, suffix, idx, includeHash){
+        var itemId = sectionId + suffix;
+        if (idx >= 0){
+            itemId += idx;
+        }
+
+        if (includeHash){
+            itemId = '#' + itemId;
+        }
+        return itemId;
+    },
+    getSectionOptions: function(sectionId){
+        var options = this.surveyPanelCfg.panels[sectionId].options || [];
+        for (var i=0; i< options.length; i++){
+            options[i].text = this.getSectionText(sectionId, i);
+            options[i].nextSection = this.down(this.getSectionNextSectionItemId(sectionId, i, true)).getValue();
+            options[i].field = this.getSectionField(sectionId, i);
+            options[i].value = this.getSectionFieldValue(sectionId, i);
+        }
+        return options;
+    }
+
+});
+Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
+
+    /**
+     * Types of panels
+     */
+    TYPE_CHOICE: 'choice',
+    TYPE_TEXT_ENTRY: 'text',
+
+    model: 'PortfolioItem/Initiative',
+    fetch: ['FormattedID','Name'],
+
+    title: 'Financial Survey',
+
+    startContainer: 'root',
+
+
+    /**
+     * panels:
+     *     hash of objects representing a panel in the survey
+     *
+     *     key: unique panel identifier
+     *     type:  type of panel (choice or text entry)  see above for options
+     *     text: the text of the question at the top of the panel
+     *
+     *     choices:  null for anything other than choice type
+     *     ** choice object **
+     *     {
+     *          text: answer text
+     *          actions:  []  array of actions to be taken when this choice is selected see below for details
+     *     }
+     *
+     *     textEntryFieldType:  type of field for text entry, null for choices
+     *     actions:  []  array of actions to be taken when next is clicked;  If this is a choice, then the actions shoudl be in the choice.  If they are not, this field will override any choice
+     *
+     *     ** action object **
+     *     {
+     *          type: update or next panel,
+     *          field: (for update, null for next panel)
+     *          value: for next panel, the name of the next panel.  Null for the end of the survey,
+     *                  for update, the value to update the field with.  If {value}, then it will take the value of the control
+     *
+     *     }
+     *
+     *
+     */
+
+
+    panels: {
+        root: {
+            id: 'root',
+            type: 'choice',
+            text: 'Please select your favorite kind of thing:',
+            options: [{
+                text: 'I like animals',
+                nextSection: 'animals',
+                field: null,
+                value: null
+            },{
+                text: 'I like cars',
+                nextSection: 'cars',
+                field: null,
+                value: null
+            }],
+            optionValue: null
+        },
+        animals: {
+            id: 'animals',
+            text: 'Please select your favorite kind of animal',
+            type: 'choice',
+            options: [{
+                text: 'I like dogs',
+                nextSection: 'dogs',
+                field: null,
+                value: null
+            },{
+                text: 'I like cats',
+                nextSection: null,
+                field: null,
+                value: null
+            },{
+                text: 'I like birds',
+                nextSection: 'birds',
+                field: null,
+                value: null
+            }],
+            optionValue: null
+        },
+        cars: {
+            id: 'cars',
+            text: 'Please describe your ideal car',
+            type: 'text',
+            field: 'Description',
+            nextSection: 'carColor',
+            exampleValue: "Suggested Template:<br/><br/>I want a car with 4 seats and a steering wheel."
+        },
+        carColor: {
+            id: 'carColor',
+            text: 'what color would your ideal car be?',
+            type: 'text',
+            field: 'Notes',
+            nextSection: null
+        },
+        dogs: {
+            text: 'Please select your favorite kind of dog',
+            type: 'choice',
+            id: 'dogs',
+            options: [{
+                text: 'I like mutts',
+                nextSection: 'mutts',
+                field: "Name",
+                value: 'I like mutts'
+            },{
+                text: 'I like poodles',
+                nextSection: 'poodles',
+                field: "Name",
+                value: 'I like poodles'
+            }],
+            optionValue: null
+        }
+    },
+
+
+    getRootConfig: function(){
+        if (!this.panels || this.panels.length === 0 || !this.panels.root){
+            this.panels.root = {
+                key: 'root',
+                text: 'Please enter the first survey question',
+                type: this.TYPE_CHOICE,
+                choices: []
+            };
+        }
+        return this.panels.root;
+    }
+});
+Ext.define('CA.agile.technicalservices.SurveyContainer',{
+    extend: 'Ext.container.Container',
+    alias: 'widget.surveycontainer',
+
+    config: {
+        itemId: 'questionCt'
+    },
+
+    constructor: function(config) {
+        this.mergeConfig(config);
+
+        this.surveyContainerCfg = config.surveyContainerCfg;
+        this.record = config.record;
+
+        this.callParent([this.config]);
+    },
+    initComponent: function() {
+
+        var cfg = this.surveyContainerCfg,
+            items = this._getNoItems();
+
+        if (cfg){
+            if (cfg.type === 'description'){
+                items = this._getDescriptionItems(cfg);
+            } else {
+                items =  this._getChoiceItems(cfg);
+            }
+        }
+        this.items = items;
+        this.callParent(arguments);
+    },
+    _getNoItems: function() {
+        return [{
+            xtype: 'container',
+            html: '<div class="survey-title">Survey Completed</div>'
+        }];
+    },
+    _getChoiceItems: function(cfg){
+        var items = [];
+
+        if (cfg.options.length > 0){
+            items.push({
+                xtype: 'container',
+                html: cfg.text,
+                cls: 'survey-instructions',
+                padding: 10,
+                margin: 10
+            });
+            Ext.Array.each(cfg.options, function(opt){
+                if (opt){
+                    items.push({
+                        xtype: 'rallyradiofield',
+                        boxLabel: opt.text,
+                        name: 'optChoice',
+                        inputValue: opt.nextKey,
+                        value: cfg.value === opt.nextKey,
+                        margin: '20 10 20 30',
+                        boxLabelAlign: 'after',
+                        boxLabelCls: 'survey-question',
+                        listeners: {
+                            change: this.choiceUpdated,
+                            scope: this
+                        }
+                    });
+                }
+            }, this);
+        }
+        return items;
+    },
+    choiceUpdated: function(radioBtn){
+        if (radioBtn.value === true){
+            this.fireEvent('choiceupdated', radioBtn && radioBtn.inputValue);
+        }
+    },
+    _getDescriptionItems: function(cfg){
+        var subItems = [{
+            xtype: 'rallyrichtexteditor',
+            itemId: 'rteDescription',
+            value: cfg.value || this.record && this.record.get(cfg.field) || "",
+            margin: 5,
+            flex: 1,
+            frame: true,
+            minHeight: 200 + 53,
+            width: '50%'
+        }];
+
+        if (cfg.exampleValue){
+            subItems.push({
+                xtype: 'container',
+                itemId: 'rteExample',
+                padding: 10,
+                readOnly: true,
+                html: cfg.exampleValue,
+                margin: 5,
+                minHeight: 200 + 53,
+                border: 1,
+                style: {
+                    borderColor: '#ccc',
+                    borderStyle: 'solid',
+                    borderRadius: 3
+                },
+                width: '50%'
+            });
+        }
+
+        return [{
+            xtype: 'container',
+            html: cfg.text,
+            cls: 'survey-instructions',
+            padding: 10
+        },{
+            xtype: 'container',
+            layout: 'hbox',
+            padding: 10,
+            items: subItems
+        }];
+    },
+    getValue: function() {
+        if (!this.surveyContainerCfg){ return null;}
+
+        if (this.surveyContainerCfg.type === 'description'){
+            return this.down('#rteDescription').getValue();
+        }
+        var key = this.down('rallyradiofield[value=true]');
+        return key && key.inputValue;
+    },
+    getNextPanelKey: function(){
+        if (!this.surveyContainerCfg){
+            return null;
+        }
+
+        if (this.surveyContainerCfg.type === 'choice'){
+            return this.getValue();
+        }
+        return this.surveyContainerCfg.nextKey || null;
+    },
+    validate: function(){
+        return true;
+
+        if (!this.surveyContainerCfg){
+            return true;
+        }
+
+        if (this.surveyContainerCfg.type === 'choice'){
+            return this.getValue();
+        }
+        return this.down('#rteDescription').getValue().length > 0;
+    }
+});
+Ext.define('CA.agile.technicalservices.SurveyDriver', {
+    mixins: {
+        observable: 'Ext.util.Observable'
+    },
+
+    surveyData: null,
+
+
+    constructor: function (config) {
+        this.mixins.observable.constructor.call(this, config);
+
+        this._fetchSurveyData(config).then({
+            success: function(data){
+                this.surveyData = data;
+                this.fireEvent('ready', this);
+            },
+            failure: function(msg){
+                this.fireEvent('problem', msg);
+            },
+            scope: this
+        });
+    },
+    getFetch: function(){
+        return this.surveyData && this.surveyData.fetch || ['FormattedID','Name'];
+    },
+    getModel: function(){
+        return this.surveyData && this.surveyData.model || 'HierarchicalRequirement';
+    },
+    getFilters: function(){
+        return this.surveyData && this.surveyData.filters || [];
+    },
+    getTitle: function(){},
+    getSurveyConfig: function(){
+        return this.surveyData;
+    },
+    getInstuctions: function(){},
+    getRootQuestions: function () {
+        if (!this.rootQuestions) throw 'DecisionTree: no initial choice(s) specified';
+        return this.getQuestions(this.rootQuestions);
+    },
+    getQuestions: function (questions) {
+
+        if (!questions) return [];
+        var list = [];
+        for (var i = 0, ln = questions.length; i < ln; i++) {
+            var childChoice = this.getQuestion(questions[i]);
+            list.push(childChoice);
+        }
+        return list;
+
+    },
+    getQuestion: function (questionKey) {
+        if (!(questionKey in this.questions)) return false;
+        return this.questions[questionKey];
+    },
+    getNextQuestions: function(thisQuestion){
+        if (!(thisQuestion in this.questions)) return false;
+        if (!('children' in this.questions[thisQuestion])) return false;
+
+        var childIds = this.questions[thisQuestion].children;
+        return this.getQuestions(childIds);
+    },
+    _fetchSurveyData: function(config){
+        var deferred = Ext.create('Deft.Deferred');
+
+        //todo: retrieve this from preferences
+        deferred.resolve(Ext.create('CA.agile.technicalservices.SurveyConfiguration'));
+
+        return deferred.promise;
+    }
+});
+
+Ext.define('CA.agile.technicalservices.SurveyPanel', {
+    extend: 'Ext.panel.Panel',
+    alias: 'widget.tssurveypanel',
+
+    requires: [
+        'Rally.ui.Button'
+    ],
+
+    logger: new Rally.technicalservices.Logger(),
+   // border: false,
+   // closable: false,
+    ui: 'info-box',
+    hideCollapseTool: true,
+    collapsible: true,
+    collapsed: false,
+    height: 400,
+    width: '100%',
+    collapseDirection: 'right',
+    headerPosition: 'left',
+    header: true,
+    cls: 'detail-panel',
+
+    padding: 10,
+    overflowY: 'auto',
+
+    config: {
+        /**
+         * @cfg {Rally.data.wsapi.Model} (required)
+         * The record that the new comment belongs to.
+         */
+        record: null,
+        surveyConfig: null,
+        nextText: 'Next >',
+        submitText: 'Submit',
+        previousText: '< Back'
+    },
+
+    dockedItems: [{
+        xtype: 'container',
+        dock: 'top',
+        items: [{
+            xtype: 'container',
+            flex: 1,
+            layout: 'hbox',
+            items: [{
+            //    xtype: 'rallybutton',
+            //    cls: 'detail-collapse-button icon-leave',
+            //    width: 18,
+            //    margin: '0 10 0 25',
+            //    userAction: 'Close (X) filter panel clicked',
+            //    listeners: {
+            //        click: this.close,
+            //        scope: this
+            //    }
+            //},{
+                xtype: 'container',
+                flex: 1,
+                itemId: 'panelTitle',
+                tpl: '<tpl><div class="survey-title">{title} for {initiativeID}</div><div class="survey-description">{instructions}</div></tpl>'
+            }]
+        }]
+    },{
+        xtype: 'toolbar',
+        dock: 'bottom',
+        layout: {
+            type: 'hbox',
+            pack: 'center'
+        },
+        ui: 'footer',
+        itemId: 'footer'
+    }],
+
+    bubbleEvents: ['failure'],
+
+    constructor: function(config){
+        this.mergeConfig(config);
+
+        this.survey = Ext.create('CA.agile.technicalservices.Survey',config.surveyConfig);
+        this.survey.setRecord(this.record);
+
+        this.callParent([this.config]);
+    },
+    initComponent: function() {
+
+        this.callParent(arguments);
+
+        this.down('#panelTitle').update({
+            title: this.survey.getTitle(),
+            instructions: this.survey.getInstructions(),
+            initiativeID: this.survey.getID()
+        });
+
+        this.drawFooter();
+
+        this._initializeSurvey();
+
+    },
+    drawFooter: function(){
+        this.logger.log('drawFooter');
+        this.down('#footer').add([
+            {
+                xtype: 'rallybutton',
+               // cls: 'detail-collapse-button icon-leave',
+                text: 'Cancel',
+                float: 'left',
+                cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
+                handler: this.close,
+                scope: this
+
+            },{
+                xtype: 'container',
+                flex: 1
+            },{
+
+                xtype: 'rallybutton',
+                text: this.previousText,
+                itemId: 'backButton',
+                disabled: true,
+                cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
+                handler: this._previousQuestion,
+                scope: this
+            },
+            {
+                xtype: 'rallybutton',
+                itemId: 'nextButton',
+                text: this.nextText,
+                cls: ['commentActionButton', 'commentSave', 'primary', 'rly-small'],
+                handler: this._nextQuestion,
+                scope: this
+            },{
+                xtype: 'container',
+                flex: 1
+            },{
+                xtype: 'rallybutton',
+                itemId: 'submitButton',
+                text: this.submitText,
+                cls: ['commentActionButton', 'commentSave', 'primary', 'rly-small'],
+                handler: this._submit,
+                scope: this,
+                float: 'right',
+                visible: false
+            }
+        ]);
+        this.down('#submitButton').setVisible(false);
+    },
+    _cancel: function() {
+        this.fireEvent('cancel');
+        this.close();
+    },
+    _submit: function(){
+
+
+        if (!this._getSurveyContainer().validate()){
+            return;
+        }
+
+         this.survey.submit(this._getSurveyContainer().getValue()).then({
+            success: function(record){
+                this.fireEvent('submit', record);
+            },
+            failure: function(msg){
+                this.fireEvent('failure', msg);
+            },
+            scope: this
+        }).always(function(){ this.close(); }, this);
+    },
+    _nextQuestion: function(){
+        if (!this._getSurveyContainer().validate()){
+            return;
+        }
+        this.survey.setValue(this._getSurveyContainer().getValue());
+        var cfg = this.survey.getPanelCfg(this._getSurveyContainer().getNextPanelKey());
+        this._updatePanel(cfg);
+    },
+    _previousQuestion: function(){
+
+        var cfg = this.survey.getPreviousPanelCfg();
+        this._updatePanel(cfg);
+    },
+    _initializeSurvey: function(){
+        if(!this.rendered){
+            this.on('afterrender', this._initializeSurvey, this);
+            return;
+        }
+        var cfg = this.survey.getPanelCfg();
+        this._updatePanel(cfg);
+    },
+    close: function(){
+        this.survey.destroy();
+        this.fireEvent('destroy');
+        this.destroy();
+    },
+    _getSurveyContainer: function(){
+        return this.down('surveycontainer');
+    },
+    _updatePanel: function(panelCfg){
+        if (this._getSurveyContainer()){ this._getSurveyContainer().destroy(); }
+
+        var ct = this.add({
+            xtype: 'surveycontainer',
+            surveyContainerCfg: panelCfg,
+            record: this.record
+        });
+        ct.on('choiceupdated', this._updateButtons, this);
+        this._updateButtons();
+    },
+    _updateButtons: function(choiceValue){
+        var isLast = this.survey.isLast(choiceValue);
+
+        this.down('#backButton').setDisabled(this.survey.isFirst());
+        this.down('#submitButton').setVisible(isLast);
+        this.down('#nextButton').setDisabled(isLast);
+    }
+});
+Ext.define("questionaire", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+
+    items: [
+        {xtype:'container',itemId:'grid_box', flex: 1},
+        {xtype:'container',itemId:'survey_box'}
+    ],
+
+    integrationHeaders : {
+        name : "questionaire"
+    },
+    config: {
+        defaultSettings: {
+            appMode: 'admin',
+            surveyType: 'PortfolioItem/Initiative',
+            surveyTitle: 'My Survey Title',
+            surveyQuery: '',
+            panels: null
+        }
+    },
+    surveyDriver: null,
+
+    MODE_ADMIN: 'admin',
+    MODE_PREVIEW: 'preview',
+    MODE_PUBLISH: 'publish',
+
+
+    launch: function() {
+        var appMode = this.getAppMode();
+
+        this.removeAll();
+
+        if (!this.isUserAdmin() && appMode === this.MODE_ADMIN){
+            this.addAppMessage("You need to be an administrator to create and publish a survey that modifies Portfolio Items.");
+            return;
+        }
+
+        var surveyConfig = Ext.create('CA.agile.technicalservices.SurveyConfiguration',{
+            surveyTitle: this.getSurveyTitle(),
+            surveyType: this.getSurveyType(),
+            surveyPanels: this.getSurveyPanelConfig()
+        });
+
+        if (appMode === this.MODE_ADMIN || !this.getSurveyPanelConfig() || this.getSurveyPanelConfig().length === 0){
+            this.launchAdminMode(surveyConfig);
+        } else {
+            this.launchSurveyMode(appMode === this.MODE_PREVIEW, surveyConfig);
+        }
+    },
+    launchAdminMode: function(surveyConfig){
+        this.logger.log('launchAdminMode', surveyConfig);
+
+        this.add({
+            xtype: 'rallybutton',
+            text: 'Save',
+            handler: this.saveConfiguration,
+            scope: this
+        });
+
+        this.add({
+            xtype: 'rallybutton',
+            text: 'Preview',
+            handler: this.previewConfiguration,
+            scope: this
+        });
+
+        var adminPanel = this.add({
+            xtype: 'surveyconfigurationview',
+            surveyPanelCfg: surveyConfig,
+            width: '99%'
+        });
+    },
+    previewConfiguration: function(){
+        var adminPanel = this.down('surveyconfigurationview');
+
+        this.logger.log('previewConfiguration', adminPanel.getSurveyConfig());
+        this.launchSurveyMode(true, adminPanel.getSurveyConfig());
+
+    },
+    saveConfiguration: function(){
+        var adminPanel = this.down('surveyconfigurationview');
+
+        this.logger.log('saveConfiguration', adminPanel.getSurveyConfig());
+
+    },
+    launchSurveyMode: function(preview, surveyConfig){
+        this.logger.log('launchSurveyMode', preview, surveyConfig);
+        Ext.create('CA.agile.technicalservices.SurveyDriver',{
+            listeners: {
+                ready: this.initializeApp,
+                problem: this.showErrorNotification,
+                scope: this
+            }
+        });
+    },
+    initializeApp: function(surveyDriver){
+        this.surveyDriver = surveyDriver;
+        this.logger.log('initializeApp', this.surveyDriver);
+        var grid = this.getGridBox().add({
+            xtype: 'rallygrid',
+            storeConfig: {
+                model: this.surveyDriver.getModel(),
+                fetch: this.surveyDriver.getFetch(),
+                filters: this.surveyDriver.getFilters()
+            },
+            columnCfgs: this.surveyDriver.getFetch(),
+            height: 450
+        });
+        grid.on('itemdblclick', this.launchSurvey, this);
+    },
+    launchSurvey: function(grid, record){
+        this.getSurveyBox().removeAll();
+
+        this.logger.log('launchSurvey', record.get('FormattedID'));
+        this.down('rallygrid').hide();
+        var surveyPanel = this.getSurveyBox().add({
+            xtype: 'tssurveypanel',
+            width: this.getWidth(),
+            surveyConfig: this.surveyDriver.getSurveyConfig(),
+            record: record
+        });
+        surveyPanel.on('submit', this.showSuccess, this);
+        surveyPanel.on('failure', this.showErrorNotification, this);
+        surveyPanel.on('destroy', this.showGrid, this);
+    },
+    showGrid: function(){
+        if (this.down('rallygrid')){
+            this.down('rallygrid').show();
+        }
+    },
+    showSuccess: function(successObj){
+        if (!successObj){
+            successObj = "Success";
+        }
+
+        if (Ext.isString(successObj)){
+            Rally.ui.notify.Notifier.show({message: successObj});
+        } else {
+            Rally.ui.notify.Notifier.showUpdate({artifact: successObj});
+        }
+
+    },
+    showErrorNotification: function(msg){
+        Rally.ui.notify.Notifier.showError({message: msg });
+    },
+    addAppMessage: function(msg){
+        this.add({
+            xtype: 'container',
+            html: Ext.String.format('<div class="survey-question">{0}</div>',msg)
+        });
+    },
+    getGridBox: function(){
+        return this.down('#grid_box');
+    },
+    getSurveyBox: function(){
+        return this.down('#survey_box');
+    },
+    getSurveyPanelConfig: function(){
+        var panelSetting = this.getSetting('panels');
+        if (!panelSetting){
+            return null;
+        }
+        var panels = [];
+        return panels;
+
+    },
+    getSurveyType: function(){
+        return this.getSetting('surveyType');
+    },
+    getSurveyTitle: function(){
+        return this.getSetting('surveyTitle');
+    },
+    isUserAdmin: function(){
+        return CA.agile.technicalservices.Toolbox.isUserWorkspaceAdmin(this.getContext());
+    },
+    getAppMode: function(){
+        return this.getSetting('appMode');
+    },
+    getSettingsFields: function(){
+        var isUserAdmin = this.isUserAdmin(),
+            appMode = this.getAppMode(),
+            labelWidth = 125,
+            settings = [{
+                xtype: 'container',
+                margin: '0 0 15 0',
+                html: '<div class="rally-upper-bold">App Mode</div>'
+            },{
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Admin',
+                labelAlign: 'right',
+                boxLabel: '<i>Edit the survey contents in this mode.<i>',
+                inputValue: this.MODE_ADMIN,
+                value: appMode == this.MODE_ADMIN,
+                labelWidth: labelWidth
+            },{
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Preview',
+                labelAlign: 'right',
+                boxLabel: '<i>(For Testing Only) The app will NOT modify Portfolio Items in this mode.</i>',
+                inputValue: this.MODE_PREVIEW,
+                value: appMode == this.MODE_PREVIEW,
+                labelWidth: labelWidth
+            }];
+
+        if (isUserAdmin){
+            settings.push({
+                xtype: 'rallyradiofield',
+                name: 'appMode',
+                fieldLabel: 'Publish (Admin Only)',
+                labelAlign: 'right',
+                boxLabel: '<i>(For Production Only) The app WILL modify Portfolio Items in this mode.</i>',
+                inputValue: this.MODE_PUBLISH,
+                value: appMode == this.MODE_PUBLISH,
+                labelWidth: labelWidth
+
+            });
+        }
+
+        settings.push({
+            xtype: 'container',
+            margin: '25 0 15 0',
+            html: '<div class="rally-upper-bold">Survey Configuration</div>'
+        });
+        settings.push({
+            xtype: 'rallytextfield',
+            fieldLabel: 'Survey Title',
+            labelAlign: 'right',
+            name: 'surveyTitle',
+            labelWidth: labelWidth,
+            width: 300
+        });
+        settings.push({
+            xtype: 'rallyportfolioitemtypecombobox',
+            fieldLabel: 'Portfolio Item Type',
+            labelAlign: 'right',
+            name: 'surveyType',
+            labelWidth: labelWidth,
+            value: this.getSurveyType(),
+            width: 300
+        });
+        settings.push({
+            xtype: 'textarea',
+            fieldLabel: 'Query',
+            name: 'queryFilter',
+            anchor: '100%',
+            cls: 'query-field',
+            margin: '0 70 0 0',
+            labelAlign: 'right',
+            labelWidth: labelWidth,
+            plugins: [
+                {
+                    ptype: 'rallyhelpfield',
+                    helpId: 194
+                },
+                'rallyfieldvalidationui'
+            ],
+            validateOnBlur: false,
+            validateOnChange: false,
+            validator: function(value) {
+                try {
+                    if (value) {
+                        Rally.data.wsapi.Filter.fromQueryString(value);
+                    }
+                    return true;
+                } catch (e) {
+                    return e.message;
+                }
+            }
+        });
+
+        return settings;
+    },
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    }
+    
+});
+
+            
+               Rally.launchApp('questionaire', {
+                   name: 'Questionaire'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+
+.survey-title {
+    color: #888888;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 12px;
+    padding-top: 5px;
+}
+
+.survey-description {
+    bottom: 7px;
+    color: #888888;
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    width: 100%;
+}
+
+.detail-panel {
+    border-left-style: solid;
+    border-left-width: 5px;
+    border-left-color: #d6d6d6;
+}
+
+.detail-collapse-button {
+    background-color: transparent;
+    color: #a9a9a9;
+    font-size: 16px;
+    line-height: 12px;
+    vertical-align: middle;
+    margin: 10px 0 0 0;
+    padding: 10px 0 0 0;
+    right: 8px;
+    top: 16px;
+    z-index: 2;
+}
+
+.survey-question {
+    color: #000000;
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    margin-left: 15px;
+}
+
+.survey-instructions {
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    margin-left: 15px;
+    color: #000000;
+}
+
+.rally-upper-bold {
+    color: #222;
+    cursor: default;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 12px;
+    text-transform: uppercase;
+    vertical-align: top;
+}
+
+.rally-panel-header {
+    font-size: 10px;
+    background-color: #e6e6e6;
+}
+
+.checkbox-label {
+    vertical-align: bottom;
+    margin-left: 15px;
+}
+
+label.x-item-disabled {
+    color: #000!important;
+}
+
+.title-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    color: #888;
+}
+
+.config-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    color: #888;
+    margin: 10px;
+    width: 95%;
+}
+
+.button-no-border {
+    border-color: #fff!important;
+    background-color: #fff;
+    color: #888!important;
+    font-size: 14px;
+}
+
+.button-no-border .x-btn-inner-center{
+    color: #888!important;
+}
+
+.danger-button {
+    color: #B81B10;!important;
+    border-color: #B81B10!important;
+    background-color: #fff;
+    font-size: 14px;
+    border-width: 1px!important;
+    margin: 5px;
+}
+
+.danger-button .x-btn-inner-center {
+    color: #B81B10;!important;
+}
+
+.add-new-section {
+    color: #000!important;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    font-style: italic;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
