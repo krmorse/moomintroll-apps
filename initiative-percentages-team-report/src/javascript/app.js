@@ -188,13 +188,15 @@ Ext.define("TSInitiativePercentageView", {
                 Rally.util.DateTime.fromIsoString(month_start), 'month', 1
             )
         );
+        //
+        var active_states = ['Defined','In-Progress','Completed'];
         
         var config = {
             find: {
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
                 "$or": [
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
+                    ScheduleState: { "$in":  active_states},
                     "_PreviousValues.ScheduleState": { "$exists": true },
                     "_ValidFrom": {
                         "$gte": month_start,
@@ -202,8 +204,12 @@ Ext.define("TSInitiativePercentageView", {
                     }
                 },
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
-                    __At: 'current'
+                    ScheduleState: { "$in": active_states },
+                    __At: month_start
+                },
+                {
+                    ScheduleState: { "$in": active_states },
+                    __At: next_month
                 }
                 ]
             },
@@ -244,6 +250,8 @@ Ext.define("TSInitiativePercentageView", {
     _fetchInitiativesFromHierarchies: function(hierarchies) {
         this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
 
+        if ( hierarchies.length === 0 ) { return []; }
+        
         var oids = [];
         Ext.Array.each(hierarchies, function(hierarchy){
             hierarchy.pop();
@@ -256,6 +264,8 @@ Ext.define("TSInitiativePercentageView", {
                 return { property:'ObjectID',value:oid }
             })
         );
+        
+        if ( Ext.isEmpty(filters) ) { return []; }
         
         var base_filter = this.getBaseInitiativeFilter();
         if ( !Ext.isEmpty(base_filter) ) {

@@ -183,10 +183,9 @@ Ext.define("TSInitiativePercentageEntry", {
         var config = {
             find: {
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
-                Project: project_oid,
                 "$or": [
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
+                    ScheduleState: { "$in":  active_states},
                     "_PreviousValues.ScheduleState": { "$exists": true },
                     "_ValidFrom": {
                         "$gte": month_start,
@@ -194,12 +193,17 @@ Ext.define("TSInitiativePercentageEntry", {
                     }
                 },
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
-                    __At: 'current'
+                    ScheduleState: { "$in": active_states },
+                    __At: month_start
+                },
+                {
+                    ScheduleState: { "$in": active_states },
+                    __At: next_month
                 }
                 ]
             },
-            fetch: ['ObjectID','_ItemHierarchy']
+            fetch: ['ObjectID','_ItemHierarchy','Project'],
+            hydrate: ['Project']
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({

@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 13 2016 17:04:45 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 20 2016 12:47:29 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 13 2016 17:04:45 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 20 2016 12:47:29 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 22310753313;
+        var CHECKSUM = 22362709487;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -760,10 +760,9 @@ Ext.define("TSInitiativePercentageEntry", {
         var config = {
             find: {
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
-                Project: project_oid,
                 "$or": [
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
+                    ScheduleState: { "$in":  active_states},
                     "_PreviousValues.ScheduleState": { "$exists": true },
                     "_ValidFrom": {
                         "$gte": month_start,
@@ -771,12 +770,17 @@ Ext.define("TSInitiativePercentageEntry", {
                     }
                 },
                 {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
-                    __At: 'current'
+                    ScheduleState: { "$in": active_states },
+                    __At: month_start
+                },
+                {
+                    ScheduleState: { "$in": active_states },
+                    __At: next_month
                 }
                 ]
             },
-            fetch: ['ObjectID','_ItemHierarchy']
+            fetch: ['ObjectID','_ItemHierarchy','Project'],
+            hydrate: ['Project']
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
