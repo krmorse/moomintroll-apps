@@ -22,12 +22,14 @@ Ext.define("TSInitiativePercentageEntry", {
         defaultSettings: {
             validBeforeMonthEnd: 5,
             validAfterMonthEnd: 10,
-            query: '(c_Capitalizable = true)'
+            initiativeFieldValues: []
         }
     },
     
     launch: function() {
         var me = this;
+        console.log('Starting with: ', this.getSettings());
+        
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
@@ -132,6 +134,7 @@ Ext.define("TSInitiativePercentageEntry", {
         Deft.Chain.pipeline([
             function() { return this._fetchActiveStoryHierarchies(project_ref); },
             this._fetchInitiativesFromHierarchies,
+            this._filterOutInitiatives,
             this._fetchAlreadyEnteredData
         ],this).then({
             success: function(results) {
@@ -179,10 +182,12 @@ Ext.define("TSInitiativePercentageEntry", {
                 Rally.util.DateTime.fromIsoString(month_start), 'month', 1
             )
         );
-        
+        var active_states = ['Defined','In-Progress','Completed'];
+
         var config = {
             find: {
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
+                 Project: project_oid,
                 "$or": [
                 {
                     ScheduleState: { "$in":  active_states},
@@ -257,6 +262,73 @@ Ext.define("TSInitiativePercentageEntry", {
             context: { project: null }
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    /*
+     * Want to filter out initiatives that did not match a particular value during the month
+     * 
+     */
+    _filterOutInitiatives: function(initiatives) {
+        var initiative_filters = this.getSetting('initiativeFieldValues');
+        if ( Ext.isEmpty(initiatives) || Ext.isEmpty(initiative_filters) ) { return initiatives; }
+        
+        var deferred = Ext.create('Deft.Deferred');
+        if ( Ext.isString(initiative_filters) ) {
+            initiative_filters = Ext.JSON.decode(initiative_filters);
+        }
+        var month_start = this.monthIsoForEntry;
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(month_start), 'month', 1
+            )
+        );
+        var oids = Ext.Array.map(initiatives, function(initiative) { return initiative.get('ObjectID'); });
+        
+        initiative_filters.push({property:'ObjectID',operator:'in', value: oids});
+        
+        var base_filters = Rally.data.lookback.QueryFilter.and(initiative_filters);
+        
+        var filters = base_filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_TypeHierarchy', operator:'in', value:['PortfolioItem']})
+        );
+        
+        filters = filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'>=', value:month_start})
+        );
+    
+        filters = filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'<', value:next_month})
+        );
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID']
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            success: function(snapshots) {
+                if ( snapshots.length === 0 ) {
+                    deferred.reject({msg: 'No initiatives meet the filters.'});
+                    return;
+                }
+                
+                var valid_items = {};
+                Ext.Array.map(snapshots, function(snapshot){
+                    valid_items[snapshot.get('ObjectID')] = snapshot;
+                });
+                
+                var valid_initiatives = Ext.Array.filter(initiatives, function(initiative){
+                    var oid = initiative.get('ObjectID');
+                    return !Ext.isEmpty(valid_items[oid]);
+                });
+                
+                deferred.resolve( valid_initiatives );
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
     },
     
     _fetchAlreadyEnteredData: function(initiatives) {
@@ -429,6 +501,8 @@ Ext.define("TSInitiativePercentageEntry", {
     },
     
     getSettingsFields: function() {
+        var type_path = this.PortfolioItemTypes[1].get('TypePath');
+        
         return [
             { 
                 xtype:'rallynumberfield',
@@ -445,34 +519,39 @@ Ext.define("TSInitiativePercentageEntry", {
                 maxValue: 14
             },
             {
-                xtype: 'textarea',
-                fieldLabel: 'Query',
-                labelAlign: 'right',
-//                labelWidth: labelWidth,
-                name: 'query',
-                anchor: '100%',
-                cls: 'query-field',
-                margin: '25 70 0 0',
-                plugins: [
-                    {
-                        ptype: 'rallyhelpfield',
-                        helpId: 194
-                    },
-                    'rallyfieldvalidationui'
-                ],
-                validateOnBlur: false,
-                validateOnChange: false,
-                validator: function(value) {
-                    try {
-                        if (value) {
-                            Rally.data.wsapi.Filter.fromQueryString(value);
-                        }
-                        return true;
-                    } catch (e) {
-                        return e.message;
-                    }
-                }
+                xtype:'tsfieldvaluepairfield',
+                name: 'initiativeFieldValues',
+                model: type_path,
+                fieldLabel: 'Initiative Field Matched During the Month:'
             }
+//            {
+//                xtype: 'textarea',
+//                fieldLabel: 'Query',
+//                labelAlign: 'right',
+//                name: 'query',
+//                anchor: '100%',
+//                cls: 'query-field',
+//                margin: '25 70 0 0',
+//                plugins: [
+//                    {
+//                        ptype: 'rallyhelpfield',
+//                        helpId: 194
+//                    },
+//                    'rallyfieldvalidationui'
+//                ],
+//                validateOnBlur: false,
+//                validateOnChange: false,
+//                validator: function(value) {
+//                    try {
+//                        if (value) {
+//                            Rally.data.wsapi.Filter.fromQueryString(value);
+//                        }
+//                        return true;
+//                    } catch (e) {
+//                        return e.message;
+//                    }
+//                }
+//            }
         ];
     },
     

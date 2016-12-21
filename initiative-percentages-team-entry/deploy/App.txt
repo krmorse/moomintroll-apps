@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 20 2016 12:47:29 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 20 2016 16:56:27 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 20 2016 12:47:29 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 20 2016 16:56:27 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 22362709487;
+        var CHECKSUM = 40358096274;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -410,6 +410,326 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+/*
+ * 
+ * For putting on the settings panel -- allows for a dropdown  representing a field and one representing its values
+ * 
+ */
+Ext.define('CA.technicalservices.settings.FieldValuePairField', {
+    extend:'Ext.form.field.Base',
+    alias: 'widget.tsfieldvaluepairfield',
+
+    fieldSubTpl: '<div id="{id}" class="settings-grid"></div>',
+    store: undefined,
+    
+    /**
+     * @cfg {String} blankText
+     */
+    blankText : 'Use + to add a field/value pair',
+
+    labelAlign: 'top',
+    
+    /**
+     * @cfg {String|Rally.data.wsapi.Model} model (req)
+     * Model from which the fields will be available
+     */
+    model: null,
+
+    onDestroy: function() {
+        if (this._grid) {
+            this._grid.destroy();
+            delete this._grid;
+        }
+        this.callParent(arguments);
+    },
+    
+    initComponent: function(){
+        this.callParent();
+        this.addEvents('ready');
+
+        if ( Ext.isEmpty(this.model) ) {
+            console.error('Must supply model for CA.technicalservices.settings.FieldValuePairField');
+            return;
+        }
+        
+    },
+    
+    onRender: function() {
+        this.callParent(arguments);
+        this._buildFieldValueGrid();        
+    },
+    
+    _buildFieldValueGrid: function() {
+        var container = Ext.create('Ext.container.Container',{
+            layout: { type:'hbox' },
+            renderTo: this.inputEl,
+            minHeight: 50,
+            minWidth: 50
+        });
+        
+        container.doLayout();
+                
+        var decoded_value = [];
+        if (this.initialConfig && this.initialConfig.value && !_.isEmpty(this.initialConfig.value)){
+            if (!Ext.isObject(this.initialConfig.value)){
+                decoded_value = Ext.JSON.decode(this.initialConfig.value);
+            } else {
+                decoded_value = this.initialConfig.value;
+            }
+            decoded_value = Ext.Array.map(decoded_value, function(val) {
+                return { "FieldName": val.property, "FieldValue": val.value};
+            });
+        }
+       
+        var empty_text = "No selections";
+        
+        console.log('initial config', this._value, this.initialConfig, decoded_value);
+
+        var custom_store = Ext.create('Ext.data.Store',{
+            fields: ['FieldName','FieldValue'],
+            data: decoded_value
+        });
+        
+        var grid_width = Math.min(container.getWidth(true)-50,500);
+
+        this._grid = container.add({
+            xtype:'rallygrid',
+            autoWidth: true,
+            columnCfgs: this._getColumns(),
+            showRowActionsColumn:false,
+            showPagingToolbar: false,
+            store: custom_store,
+            height: 150,
+            margin: 3,
+            width: grid_width,
+            emptyText: empty_text,
+            editingConfig: {
+                publishMessages: false
+            }
+        });
+        
+        
+        container.add({
+            xtype: 'rallybutton',
+            text: '+',
+            margin: '3 0 0 10',
+            listeners: {
+                scope: this,
+                click: function(){
+                    Ext.create('CA.technicalservices.FieldValuePickerDialog',{
+                        autoShow: true,
+                        width: 250,
+                        heigh: 250,
+                        model: this.model,
+                        listeners: {
+                            scope: this,
+                            itemschosen: function(new_data){
+                                this._grid.getStore().add(new_data);
+                            }
+                        }
+                    });                
+                }
+            }
+        });
+        this.fireEvent('ready', true);
+
+    },
+    
+    _removeValue: function() {
+        this.grid.getStore().remove(this.record);
+    },
+    
+    _getColumns: function() {
+        var me = this;
+        return [
+        {
+            xtype: 'rallyrowactioncolumn',
+            scope: this,
+            rowActionsFn: function(record){
+                return  [
+                    {text: 'Remove', record: record, handler: me._removeValue, grid: me._grid }
+                ];
+            }
+        },
+        {
+            text: 'Field Name',
+            dataIndex: 'FieldName',
+            flex: 1,
+            editor: false
+        },
+        {
+            text: 'Field Value',
+            dataIndex: 'FieldValue',
+            flex: 1,
+            editor: false
+        }
+        ];
+    },
+    
+    _getSettingValue: function() {
+        var store = this._grid.getStore();
+
+        var selections = [];
+        store.each(function(record) {
+            var filter = {property:record.get('FieldName'),value: record.get('FieldValue')};
+            selections.push(filter);
+        }, this);
+        
+        return selections;
+    },
+    
+    getSubmitData: function() {
+        var data = {};
+        data[this.name] = Ext.JSON.encode(this._getSettingValue());
+        return data;
+    },
+    
+    setValue: function(value) {
+        console.log('setValue', value);
+        this.callParent(arguments);
+        this._value = value;
+    }
+});
+Ext.define('CA.technicalservices.FieldValuePickerDialog', {
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsfieldvaluepickerdialog',
+
+    minWidth: 250,
+    minHeight: 250,
+    
+    layout: 'vbox',
+    closable: true,
+    draggable: true,
+
+    config: {
+        /**
+         * @cfg {String}
+         * Title to give to the dialog
+         */
+        title: 'Choose Field & Value',
+
+        /**
+         * @cfg {String}
+         * Text to be displayed on the button when selection is complete
+         */
+        selectionButtonText: 'Done',
+        
+        /**
+         * @cfg {String} model (Required)
+         * 
+         */
+        model: null
+    },
+
+    constructor: function(config) {
+        this.mergeConfig(config);
+
+        this.callParent([this.config]);
+    },
+
+    selectionCache: [],
+
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.addCls(['chooserDialog', 'chooser-dialog']);
+    },
+
+    beforeRender: function() {
+        this.callParent(arguments);
+
+        this.addDocked({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            padding: '0 0 10 0',
+            layout: {
+                type: 'hbox',
+                pack: 'center'
+            },
+            ui: 'footer',
+            items: [
+                {
+                    xtype: 'rallybutton',
+                    itemId: 'doneButton',
+                    text: this.selectionButtonText,
+                    cls: 'primary rly-small',
+                    scope: this,
+                    disabled: true,
+                    userAction: 'clicked done in dialog',
+                    handler: function() {
+                        this.fireEvent('itemschosen', this.getSelectedRecords());
+                        this.close();
+                    }
+                },
+                {
+                    xtype: 'rallybutton',
+                    text: 'Cancel',
+                    cls: 'secondary rly-small',
+                    handler: this.close,
+                    scope: this,
+                    ui: 'link'
+                }
+            ]
+        });
+
+        this._addFieldSelector();
+    },
+
+    _addFieldSelector: function() {
+        this.fieldSelector = this.add({
+            xtype:'rallyfieldcombobox',
+            model:this.model,
+            fieldLabel: 'Field:',
+            labelAlign: 'top',
+            width: 175,
+            margin: 10,
+            _isNotHidden: function(field) {
+                if ( field.hidden ) { return false; }
+
+                var attribute_definition = field.attributeDefinition;
+                if ( Ext.isEmpty(attribute_definition) ) { return false; }
+                
+                if ( attribute_definition.AttributeType == "BOOLEAN" ) { return true; }
+                if ( attribute_definition.AttributeType == "STRING" && attribute_definition.Constrained == true ) { return true; }
+                
+                return false;
+            },
+            
+            listeners: {
+                change: this._addValueSelector,
+                scope: this
+            }
+        });
+    },
+
+    _addValueSelector: function() {
+        if ( this.valueSelector ) { this.valueSelector.destroy(); }
+        this.down('#doneButton').setDisabled(true);
+        
+        this.valueSelector = this.add({
+            xtype:'rallyfieldvaluecombobox',
+            model: this.model,
+            field: this.fieldSelector.getValue(),
+            fieldLabel: 'Value:',
+            labelAlign: 'top',
+            width: 175,
+            margin: 10,
+            listeners: {
+                change: function() { this.down('#doneButton').setDisabled(false); },
+                scope: this
+            }
+        });
+    },
+    
+    getSelectedRecords: function() {
+        return {
+            FieldName: this.fieldSelector.getValue(),
+            FieldValue: this.valueSelector.getValue()
+        }
+    }
+
+});
+
 Ext.define('TSDateCalculator',{
     singleton: true,
     
@@ -599,12 +919,14 @@ Ext.define("TSInitiativePercentageEntry", {
         defaultSettings: {
             validBeforeMonthEnd: 5,
             validAfterMonthEnd: 10,
-            query: '(c_Capitalizable = true)'
+            initiativeFieldValues: []
         }
     },
     
     launch: function() {
         var me = this;
+        console.log('Starting with: ', this.getSettings());
+        
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
@@ -709,6 +1031,7 @@ Ext.define("TSInitiativePercentageEntry", {
         Deft.Chain.pipeline([
             function() { return this._fetchActiveStoryHierarchies(project_ref); },
             this._fetchInitiativesFromHierarchies,
+            this._filterOutInitiatives,
             this._fetchAlreadyEnteredData
         ],this).then({
             success: function(results) {
@@ -756,10 +1079,12 @@ Ext.define("TSInitiativePercentageEntry", {
                 Rally.util.DateTime.fromIsoString(month_start), 'month', 1
             )
         );
-        
+        var active_states = ['Defined','In-Progress','Completed'];
+
         var config = {
             find: {
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
+                 Project: project_oid,
                 "$or": [
                 {
                     ScheduleState: { "$in":  active_states},
@@ -834,6 +1159,73 @@ Ext.define("TSInitiativePercentageEntry", {
             context: { project: null }
         };
         return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    /*
+     * Want to filter out initiatives that did not match a particular value during the month
+     * 
+     */
+    _filterOutInitiatives: function(initiatives) {
+        var initiative_filters = this.getSetting('initiativeFieldValues');
+        if ( Ext.isEmpty(initiatives) || Ext.isEmpty(initiative_filters) ) { return initiatives; }
+        
+        var deferred = Ext.create('Deft.Deferred');
+        if ( Ext.isString(initiative_filters) ) {
+            initiative_filters = Ext.JSON.decode(initiative_filters);
+        }
+        var month_start = this.monthIsoForEntry;
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(month_start), 'month', 1
+            )
+        );
+        var oids = Ext.Array.map(initiatives, function(initiative) { return initiative.get('ObjectID'); });
+        
+        initiative_filters.push({property:'ObjectID',operator:'in', value: oids});
+        
+        var base_filters = Rally.data.lookback.QueryFilter.and(initiative_filters);
+        
+        var filters = base_filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_TypeHierarchy', operator:'in', value:['PortfolioItem']})
+        );
+        
+        filters = filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'>=', value:month_start})
+        );
+    
+        filters = filters.and(
+            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'<', value:next_month})
+        );
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID']
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            success: function(snapshots) {
+                if ( snapshots.length === 0 ) {
+                    deferred.reject({msg: 'No initiatives meet the filters.'});
+                    return;
+                }
+                
+                var valid_items = {};
+                Ext.Array.map(snapshots, function(snapshot){
+                    valid_items[snapshot.get('ObjectID')] = snapshot;
+                });
+                
+                var valid_initiatives = Ext.Array.filter(initiatives, function(initiative){
+                    var oid = initiative.get('ObjectID');
+                    return !Ext.isEmpty(valid_items[oid]);
+                });
+                
+                deferred.resolve( valid_initiatives );
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
     },
     
     _fetchAlreadyEnteredData: function(initiatives) {
@@ -1006,6 +1398,8 @@ Ext.define("TSInitiativePercentageEntry", {
     },
     
     getSettingsFields: function() {
+        var type_path = this.PortfolioItemTypes[1].get('TypePath');
+        
         return [
             { 
                 xtype:'rallynumberfield',
@@ -1022,34 +1416,39 @@ Ext.define("TSInitiativePercentageEntry", {
                 maxValue: 14
             },
             {
-                xtype: 'textarea',
-                fieldLabel: 'Query',
-                labelAlign: 'right',
-//                labelWidth: labelWidth,
-                name: 'query',
-                anchor: '100%',
-                cls: 'query-field',
-                margin: '25 70 0 0',
-                plugins: [
-                    {
-                        ptype: 'rallyhelpfield',
-                        helpId: 194
-                    },
-                    'rallyfieldvalidationui'
-                ],
-                validateOnBlur: false,
-                validateOnChange: false,
-                validator: function(value) {
-                    try {
-                        if (value) {
-                            Rally.data.wsapi.Filter.fromQueryString(value);
-                        }
-                        return true;
-                    } catch (e) {
-                        return e.message;
-                    }
-                }
+                xtype:'tsfieldvaluepairfield',
+                name: 'initiativeFieldValues',
+                model: type_path,
+                fieldLabel: 'Initiative Field Matched During the Month:'
             }
+//            {
+//                xtype: 'textarea',
+//                fieldLabel: 'Query',
+//                labelAlign: 'right',
+//                name: 'query',
+//                anchor: '100%',
+//                cls: 'query-field',
+//                margin: '25 70 0 0',
+//                plugins: [
+//                    {
+//                        ptype: 'rallyhelpfield',
+//                        helpId: 194
+//                    },
+//                    'rallyfieldvalidationui'
+//                ],
+//                validateOnBlur: false,
+//                validateOnChange: false,
+//                validator: function(value) {
+//                    try {
+//                        if (value) {
+//                            Rally.data.wsapi.Filter.fromQueryString(value);
+//                        }
+//                        return true;
+//                    } catch (e) {
+//                        return e.message;
+//                    }
+//                }
+//            }
         ];
     },
     
