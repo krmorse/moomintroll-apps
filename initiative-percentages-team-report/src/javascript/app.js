@@ -3,9 +3,12 @@ Ext.define("TSInitiativePercentageView", {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
+    
+    layout: 'border',
+    
     items: [
-        {xtype:'container',itemId:'selector_box',layout: 'hbox', defaults: { margin: 10 }},
-        {xtype:'container',itemId:'display_box', layout: 'fit'}
+        {xtype:'container',itemId:'selector_box',region: 'north', layout: 'hbox', defaults: { margin: 10 }},
+        {xtype:'container',itemId:'display_box', region: 'center', layout: 'fit'}
     ],
 
     integrationHeaders : {
@@ -103,20 +106,12 @@ Ext.define("TSInitiativePercentageView", {
             }, 
             me
         );
-        
-//                container.add({
-//                    xtype:'container',
-//                    cls: 'month-name-display',
-//                    html: this.monthNameForEntry
-//                });
-//        
 
     },
     
     _updateData: function() {
         this._clearDisplayBox();
        
-        
         if ( Ext.isEmpty(this.selectedYear) || Ext.isEmpty(this.selectedMonth) ) {
             return;
         }
@@ -393,7 +388,7 @@ Ext.define("TSInitiativePercentageView", {
         var store = Ext.create('Rally.data.custom.Store',{
             model:'TSModel',
             data: initiatives,
-            groupField: 'Project'
+            groupField: 'ObjectID'
         });
         
         this._clearDisplayBox();
@@ -411,22 +406,44 @@ Ext.define("TSInitiativePercentageView", {
             features: [{
                 ftype: 'grouping',
                 startCollapsed: true,
-                groupHeaderTpl: 'Team: {name}'
+                groupHeaderTpl: '{[values.rows[0].data.FormattedID]}: {[values.rows[0].data.Name]}'
             }]
         });
     },
     
     _getColumns: function() {
         return [
+//            { 
+//                text: 'ID',       
+//                xtype: 'templatecolumn', 
+//                tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate',{
+//                    showIcon: false,
+//                    showHover: true
+//                })
+//            },
+//            { dataIndex:'Name',text:'Name', flex: 1},
             { 
-                text: 'ID',       
-                xtype: 'templatecolumn', 
-                tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate',{
-                    showIcon: false,
-                    showHover: true
-                })
+                dataIndex: 'FormattedID',
+                text: 'ID',
+                hidden: true
             },
-            { dataIndex:'Name',text:'Name', flex: 1},
+            {
+                dataIndex: 'Name',
+                text: 'Name',
+                hidden: true
+            },
+            { 
+                text: 'Team',
+                dataIndex: 'Project',
+                flex: 1,
+                renderer: function(value,meta,record){
+                    console.log('value:', value);
+                    if ( Ext.isObject(value) ) {
+                        return value._refObjectName;
+                    }
+                    return value;
+                }
+            },
             { 
                 dataIndex:'__percentage', 
                 text: 'Percentage', 
