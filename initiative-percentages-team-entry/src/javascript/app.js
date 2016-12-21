@@ -419,6 +419,7 @@ Ext.define("TSInitiativePercentageEntry", {
                             minValue: 0,
                             maxValue: 100,
                             disabled: false,
+                            allowDecimals: false,
                             selectOnFocus: true,
                             validator: function(value) {
                                 value = value || 0;
