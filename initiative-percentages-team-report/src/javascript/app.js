@@ -96,6 +96,21 @@ Ext.define("TSInitiativePercentageView", {
             }, 
             me
         );
+        
+        container.add({xtype:'container',flex: 1});
+        
+        container.add({
+            xtype:'rallybutton',
+            itemId:'export_button',
+            cls: 'secondary',
+            text: '<span class="icon-export"> </span>',
+            disabled: true,
+            listeners: {
+                scope: this,
+                click: this._export
+            }
+        });
+        
     },
     
     _updateData: function() {
@@ -479,8 +494,7 @@ Ext.define("TSInitiativePercentageView", {
                 groupHeaderTpl: '{[values.rows[0].data.FormattedID]}: {[values.rows[0].data.Name]}'
             }]
         });
-        
-        console.log('grid:', this.grid);
+        this.down('#export_button').setDisabled(false);
     },
     
     _getColumns: function() {
@@ -666,6 +680,41 @@ Ext.define("TSInitiativePercentageView", {
     
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
+    },
+    
+    _export: function(){
+        var me = this;
+        this.logger.log('_export');
+        
+        var grid = this.down('rallygrid');
+        var rows = this.rows;
+      
+        if ( !grid && !rows ) { return; }
+        
+        if ( !rows ) {
+            rows = [];
+            var store = grid.getStore();
+            var count = store.getTotalCount();
+            for ( var i=0; i<count; i++ ) {
+                rows.push(store.getAt(i));
+            }
+        }
+        var filename = 'report.csv';
+        
+        this.setLoading("Generating CSV");
+        Deft.Chain.sequence([
+            function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } 
+        ]).then({
+            scope: this,
+            success: function(csv){
+                if (csv && csv.length > 0){
+                    Rally.technicalservices.FileUtilities.saveCSVToFile(csv,filename);
+                } else {
+                    Rally.ui.notify.Notifier.showWarning({message: 'No data to export'});
+                }
+                
+            }
+        }).always(function() { me.setLoading(false); });
     }
     
 });
