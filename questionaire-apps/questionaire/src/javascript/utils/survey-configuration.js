@@ -1,5 +1,7 @@
 Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
-
+    mixins: {
+        observable: 'Ext.util.Observable'
+    },
     /**
      * Types of panels
      */
@@ -13,7 +15,61 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
 
     startContainer: 'root',
 
+    constructor: function (config) {
 
+        this.mixins.observable.constructor.call(this, config);
+
+        this.surveyTitle = config.surveyTitle;
+        this.surveyType = config.surveyType;
+
+        Rally.data.PreferenceManager.load({
+            appID: this.getAppId(),
+            success: function(prefs) {
+                console.log('prefs', prefs);
+                this.panels = {};
+                //process prefs
+                this.fireEvent('ready', this);
+            },
+            scope: this
+        });
+    },
+    getAppId: function(){
+        return Rally.getApp().getAppId();
+    },
+    saveConfiguration: function(){
+        var panelSetting = Ext.JSON.encode(this.panels);
+
+        Rally.data.PreferenceManager.update({
+            appID: this.getAppId(),
+            settings: {
+                panels: panelSetting
+            },
+            scope: this,
+            success: function(prefs) {
+                console.log('prefs saved', prefs);
+                //process prefs
+            }
+        });
+    },
+    getPanels: function(){
+        if (!this.panels || Ext.Object.isEmpty(this.panels) || !this.panels.root){
+            this.panels = {
+                root: {
+                    id: 'root',
+                    text: 'Please enter the first survey question',
+                    type: this.TYPE_CHOICE,
+                    options: []
+                }
+            };
+        }
+        return this.panels;
+    },
+    getPanel: function(panelId){
+        return this.panels[panelId];
+    },
+    setPanel: function(panelId, panelCfg){
+        this.panels[panelId] = panelCfg;
+    },
     /**
      * panels:
      *     hash of objects representing a panel in the survey
@@ -61,7 +117,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
                 field: null,
                 value: null
             }],
-            optionValue: null
+            optionIndex: null
         },
         animals: {
             id: 'animals',
@@ -83,7 +139,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
                 field: null,
                 value: null
             }],
-            optionValue: null
+            optionIndex: null
         },
         cars: {
             id: 'cars',
@@ -115,18 +171,20 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
                 field: "Name",
                 value: 'I like poodles'
             }],
-            optionValue: null
+            optionIndex: null
         }
     },
 
 
     getRootConfig: function(){
-        if (!this.panels || this.panels.length === 0 || !this.panels.root){
-            this.panels.root = {
-                key: 'root',
-                text: 'Please enter the first survey question',
-                type: this.TYPE_CHOICE,
-                choices: []
+        if (!this.panels || Ext.Object.isEmpty(this.panels) || !this.panels.root){
+            this.panels = {
+                root: {
+                    key: 'root',
+                    text: 'Please enter the first survey question',
+                    type: this.TYPE_CHOICE,
+                    choices: []
+                }
             };
         }
         return this.panels.root;

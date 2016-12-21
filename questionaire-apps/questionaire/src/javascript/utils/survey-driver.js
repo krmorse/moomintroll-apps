@@ -9,7 +9,7 @@ Ext.define('CA.agile.technicalservices.SurveyDriver', {
     constructor: function (config) {
         this.mixins.observable.constructor.call(this, config);
 
-        this._fetchSurveyData(config).then({
+        this._fetchSurveyData(config.surveyConfig).then({
             success: function(data){
                 this.surveyData = data;
                 this.fireEvent('ready', this);
@@ -64,7 +64,9 @@ Ext.define('CA.agile.technicalservices.SurveyDriver', {
         var deferred = Ext.create('Deft.Deferred');
 
         //todo: retrieve this from preferences
-        deferred.resolve(Ext.create('CA.agile.technicalservices.SurveyConfiguration'));
+        deferred.resolve(config);
+
+//        deferred.resolve(Ext.create('CA.agile.technicalservices.SurveyConfiguration'));
 
         return deferred.promise;
     }

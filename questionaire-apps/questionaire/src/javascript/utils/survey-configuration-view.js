@@ -30,7 +30,17 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSections: function(){
         var sections = [],
             idx = 0;
-        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionID, section){
+
+        //save the current section
+        Ext.Array.each(this.items, function(item){
+            console.log('item', item);
+            if (item.collapsed !== false){
+                var sectionId = item.itemId;
+                this.getSectionOptions(sectionId);
+            }
+        }, this);
+
+        Ext.Object.each(this.surveyPanelCfg.getPanels(), function(sectionID, section){
             sections.push(this._getSection(section, idx++));
         }, this);
 
@@ -39,7 +49,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         return sections;
     },
     _getSectionKeys: function(){
-        return Ext.Object.getKeys(this.surveyPanelCfg.panels);
+        return Ext.Object.getKeys(this.surveyPanelCfg.getPanels());
     },
     _getAddNewSection: function(){
         return {
@@ -67,7 +77,6 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         };
     },
     _getSection: function(sectionConfig, idx){
-        console.log('sectionConfig', sectionConfig, idx);
         var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
             type = sectionConfig.type;
 
@@ -76,7 +85,14 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             flex: 1,
             items: this._getSectionItems(sectionConfig, idx),
             itemId: sectionConfig.id,
-            collapsed: sectionConfig.id !== 'root'
+            collapsed: sectionConfig.id !== 'root',
+            listeners: {
+                beforecollapse: function(p){
+                  //  console.log('collapse', p.itemId,this.surveyPanelCfg.getPanel(p.itemId).options,this.getSectionOptions(p.itemId));
+                    this.surveyPanelCfg.getPanel(p.itemId).options = this.getSectionOptions(p.itemId);
+                },
+                scope: this
+            }
         };
     },
     _getSectionItems: function(sectionConfig, idx){
@@ -93,7 +109,12 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             labelSeparator: '',
             grow: true,
             width: '90%',
-            margin: 10
+            margin: 10,
+            listeners: {
+                blur: function(txt){
+                    sectionConfig.text = txt.getValue();
+                }
+            }
         },{
             xtype: 'radiogroup',
             itemId: this.getSectionTypeItemId(sectionConfig.id),
@@ -173,6 +194,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             fieldLabel: 'Example Value',
             labelAlign: 'top',
             labelCls: 'rally-upper-bold',
+            emptyText: 'Type question text...',
             itemId: this.getSectionExampleValueItemId(sectionConfig.id),
             labelSeparator: '',
             grow: true,
@@ -246,6 +268,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
                     xtype:'textareafield',
                     grow: true,
                     fieldLabel: '',
+                    emptyText: 'Type choice text...',
                     itemId: this.getSectionTextItemId(sectionConfig.id, idx),
                     columnWidth:.5,
                     value: option.text
@@ -276,7 +299,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
                         _isNotHidden: this.shouldShowUpdateField,
                         listeners: {
                             select: this.updateFieldValueOptions,
-                            scope: this
+                            scope: this,
+                            ready: this.updateFieldValueOptions
                         }
                     }]
                 }]
@@ -300,18 +324,20 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     addOption: function(btn){
         var optionInfo = btn.itemId.replace('-addOption', '');
         if (optionInfo){
-            var section = this.surveyPanelCfg.panels[optionInfo];
+            var section = this.surveyPanelCfg.getPanel(optionInfo);
+
             section.options.push({
-                text: 'New Option text',
+                text: '',
                 nextSection: null
             });
+
             this.refreshSection(optionInfo);
         }
     },
     deleteOption: function(btn){
         var optionInfo = btn.itemId.split('-delete-');
         if (optionInfo && optionInfo.length == 2){
-            var section = this.surveyPanelCfg.panels[optionInfo[0]];
+            var section = this.surveyPanelCfg.getPanel(optionInfo[0]);
             section.options.splice(optionInfo[1],1);
             this.refreshSection(optionInfo[0]);
         }
@@ -320,8 +346,9 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
 
         var sectionCmp = this.down('#' + sectionId);
         if (sectionCmp){
+            this.surveyPanelCfg.getPanel(sectionId).options = this.getSectionOptions(sectionId);
             sectionCmp.removeAll();
-            sectionCmp.add(this._getSectionItems(this.surveyPanelCfg.panels[sectionId]));
+            sectionCmp.add(this._getSectionItems(this.surveyPanelCfg.getPanel(sectionId)));
             sectionCmp.doLayout();
         }
     },
@@ -333,7 +360,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     deleteSection: function(btn){
         var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
         if (sectionId){
-            delete this.surveyPanelCfg.panels[sectionId];
+            delete this.surveyPanelCfg.getPanel(sectionId);
         }
         this.refreshSurvey();
     },
@@ -349,19 +376,19 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             return;
         }
 
-        this.surveyPanelCfg.panels[sectionId] = {
+        this.surveyPanelCfg.setPanel(sectionId, {
             type: 'choice',
             text: '',
             id: sectionId,
             options: []
-        };
+        });
         this.refreshSurvey();
     },
     changeType: function(group, newValue){
         var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
 
         if (newValue && newValue.questionType){
-            this.surveyPanelCfg.panels[sectionId].type = newValue.questionType;
+            this.surveyPanelCfg.getPanel(sectionId).type = newValue.questionType;
             this.refreshSection(sectionId);
         }
     },
@@ -373,8 +400,12 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             valueItemId = this.getSectionFieldValueItemId(sectionId, idx),
             containerId = this.getSectionUpdateContainerItemId(sectionId, idx);
 
-        var fieldDef = cb && cb.getRecord() && cb.getRecord().get('fieldDefinition');
+        var value = this.surveyPanelCfg.getPanel(sectionId).options &&
+            this.surveyPanelCfg.getPanel(sectionId).options[idx] &&
+            this.surveyPanelCfg.getPanel(sectionId).options[idx].value || null
 
+        var fieldDef = cb && cb.getRecord() && cb.getRecord().get('fieldDefinition');
+        console.log('updateFieldValueOptions', fieldDef, value, containerId);
         var cfg = null;
         if (fieldDef && fieldDef.attributeDefinition){
             cfg = fieldDef.editor || {
@@ -385,6 +416,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             cfg.labelAlign = 'right';
             cfg.labelWidth = 75;
             cfg.width = cb.getWidth();
+            cfg.value = value;
         }
 
         var ct = this.down('#' + containerId);
@@ -422,7 +454,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     getSurveyConfig: function(){
         var surveyConfig = this.surveyPanelCfg;
 
-        Ext.Object.each(this.surveyPanelCfg.panels, function(sectionId, section){
+        Ext.Object.each(this.surveyPanelCfg.getPanels(), function(sectionId, section){
             section.text = this.getSectionText(sectionId);
             section.type = this.getSectionType(sectionId);
             if (section.type === 'choice'){
@@ -439,7 +471,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         return surveyConfig;
     },
     getSectionText: function(sectionId, idx){
-        return this.down(this.getSectionTextItemId(sectionId, idx, true)).getValue();
+        return this.down(this.getSectionTextItemId(sectionId, idx, true)) &&
+                this.down(this.getSectionTextItemId(sectionId, idx, true)).getValue() || null;
     },
     getSectionTextItemId: function(sectionId, idx, includeHash){
         return this.getItemId(sectionId,this.sectionTextSuffix,idx,includeHash);
@@ -449,7 +482,9 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             this.down(this.getSectionTypeItemId(sectionId, true)).getValue().questionType;
     },
     getSectionField: function(sectionId, idx){
-        return this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue();
+
+        return this.down(this.getSectionFieldItemId(sectionId, idx, true)) &&
+            this.down(this.getSectionFieldItemId(sectionId, idx, true)).getValue() || null;
     },
     getSectionFieldValue: function(sectionId, idx){
         return this.down(this.getSectionFieldValueItemId(sectionId, idx, true)) &&
@@ -485,10 +520,12 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         return itemId;
     },
     getSectionOptions: function(sectionId){
-        var options = this.surveyPanelCfg.panels[sectionId].options || [];
+        var options = this.surveyPanelCfg.getPanel(sectionId).options || [];
+
         for (var i=0; i< options.length; i++){
             options[i].text = this.getSectionText(sectionId, i);
-            options[i].nextSection = this.down(this.getSectionNextSectionItemId(sectionId, i, true)).getValue();
+            options[i].nextSection = this.down(this.getSectionNextSectionItemId(sectionId, i, true)) &&
+                this.down(this.getSectionNextSectionItemId(sectionId, i, true)).getValue() || null;
             options[i].field = this.getSectionField(sectionId, i);
             options[i].value = this.getSectionFieldValue(sectionId, i);
         }

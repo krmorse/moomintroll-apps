@@ -18,68 +18,68 @@ Ext.define('CA.agile.technicalservices.Survey',{
         console.log('getID', this.record.get('FormattedID'));
         return this.record && this.record.get('FormattedID') || "Unknown";
     },
-    getRootKey: function(){
-        return Ext.Object.getKeys(this.questionMap)[0];
-    },
-    getInitialContainerConfig: function(){
-        var containerKey = this.startContainer;
-        this.questionPath = [containerKey];
-        return this.getQuestionConfig(containerKey);
-    },
-    getNextContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
-        //get the next container in the tree.
-        this.questionPath.push(selectedChildKey);
-        this.questions[selectedChildKey].value = containerValue;
-        return this.getQuestionConfig(selectedChildKey);
-    },
-    getPreviousContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
-        if (containerValue){
-            this.questions[selectedChildKey].value = containerValue;
-        }
-        //now remove the last element from the path
-        this.questionPath.pop();
-        return this.getQuestionConfig(this.questionPath[this.questionPath.length-1]);
-    },
-    getQuestionMap: function(questionKey){
-        var map = this.questionMap;
-        Ext.Array.each(this.questionPath, function(key){
-            map = map[key] || null;
-            if (!map){ return false; }
-            if (questionKey === key){
-                return false;
-            }
-        });
-        return map;
-    },
-    getQuestionConfig: function(key){
-        var question = this.questions[key],
-            hasChildren = false;
-        if (!question){
-            return null;
-        }
-
-        var childrenKeys = question.children || [],
-            children = [];
-        Ext.Array.map(childrenKeys, function(c){
-            var child = this.questions[c];
-            if (child){
-                child.key = c;
-                hasChildren = (child.children && child.children.length > 0);
-                child.value = (question.value === child.key);
-                children.push(child);
-            }
-        }, this);
-
-        return {
-            xtype: question.childType,
-            instructions: question.childInstructions,
-            questions: children,
-            record: this.record,
-            key: key,
-            hasChildren: hasChildren
-        };
-    },
-    submit: function(containerValue){
+    //getRootKey: function(){
+    //    return Ext.Object.getKeys(this.questionMap)[0];
+    //},
+    //getInitialContainerConfig: function(){
+    //    var containerKey = this.startContainer;
+    //    this.questionPath = [containerKey];
+    //    return this.getQuestionConfig(containerKey);
+    //},
+    //getNextContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
+    //    //get the next container in the tree.
+    //    this.questionPath.push(selectedChildKey);
+    //    this.questions[selectedChildKey].value = containerValue;
+    //    return this.getQuestionConfig(selectedChildKey);
+    //},
+    //getPreviousContainerConfig: function(currentContainerKey,selectedChildKey, containerValue){
+    //    if (containerValue){
+    //        this.questions[selectedChildKey].value = containerValue;
+    //    }
+    //    //now remove the last element from the path
+    //    this.questionPath.pop();
+    //    return this.getQuestionConfig(this.questionPath[this.questionPath.length-1]);
+    //},
+    //getQuestionMap: function(questionKey){
+    //    var map = this.questionMap;
+    //    Ext.Array.each(this.questionPath, function(key){
+    //        map = map[key] || null;
+    //        if (!map){ return false; }
+    //        if (questionKey === key){
+    //            return false;
+    //        }
+    //    });
+    //    return map;
+    //},
+    //getQuestionConfig: function(key){
+    //    var question = this.questions[key],
+    //        hasChildren = false;
+    //    if (!question){
+    //        return null;
+    //    }
+    //
+    //    var childrenKeys = question.children || [],
+    //        children = [];
+    //    Ext.Array.map(childrenKeys, function(c){
+    //        var child = this.questions[c];
+    //        if (child){
+    //            child.key = c;
+    //            hasChildren = (child.children && child.children.length > 0);
+    //            child.value = (question.value === child.key);
+    //            children.push(child);
+    //        }
+    //    }, this);
+    //
+    //    return {
+    //        xtype: question.childType,
+    //        instructions: question.childInstructions,
+    //        questions: children,
+    //        record: this.record,
+    //        key: key,
+    //        hasChildren: hasChildren
+    //    };
+    //},
+    submit: function(containerValue, preview){
         var deferred = Ext.create('Deft.Deferred');
        // this.panelPath.push(selectedChildKey);
         this.setValue(containerValue);
@@ -89,88 +89,80 @@ Ext.define('CA.agile.technicalservices.Survey',{
         var updates = {};
         Ext.Array.each(this.panelPath, function(key){
             var panel = this.panels[key];
-            if (panel.updates){
-                Ext.Object.each(panel.updates, function(field,value){
-                    if (Ext.isString(value)){
-                        value = value.replace(/\{value}/g, panel.value);
-                    }
-                    updates[field] = value
-                });
+            if (panel.field && panel.value){
+                updates[panel.field] = panel.value;
             }
-            if (panel.options){
-                Ext.Array.each(panel.options, function(opt){
-                    if (opt.nextKey === panel.value && opt.updates){
-                        Ext.Object.each(opt.updates, function(field,value){
-                            updates[field] = value
-                        });
-                    }
-                });
+            if (panel.options && panel.value){
+                if (panel.value >= 0 && panel.options.length > panel.value && panel.options[panel.value].field){
+                    updates[ panel.options[panel.value].field] =  panel.options[panel.value].value;
+                }
             }
         }, this);
-        //Ext.Array.each(this.questionPath, function(key){
-        //    var question = this.questions[key];
-        //    if (question.updates){
-        //        Ext.Object.each(question.updates, function(field,value){
-        //            if (Ext.isString(value)){
-        //                value = value.replace(/\{value}/g, question.value);
-        //            }
-        //            updates[field] = value
-        //        });
-        //    }
-        //}, this);
 
-        console.log('submit', updates);
-        Ext.Object.each(updates, function(field,value){
-            this.record.set(field, value);
-        }, this);
 
-        this.record.save().then({
-            success: function(record){
-                deferred.resolve(record);
-            },
-            failure: function(){
-                deferred.reject('Failed to save changes');
-            },
-            scope: this
-        });
+        if (!preview){
+            Ext.Object.each(updates, function(field,value){
+                this.record.set(field, value);
+            }, this);
+
+            this.record.save().then({
+                success: function(record){
+                    deferred.resolve(record);
+                },
+                failure: function(){
+                    deferred.reject('Failed to save changes');
+                },
+                scope: this
+            });
+        } else {
+            var previewMsg = 'The following updates would be made:  <br/>:';
+            Ext.Object.each(updates, function(field,value){
+                previewMsg += Ext.String.format('{0}: {1} => {2}<br/>', field,this.record.get(field),value);
+            }, this);
+            deferred.resolve(previewMsg);
+        }
+
         return deferred;
     },
-    isFirstButton: function(){
-        return (this.questionPath.length === 1);
-    },
+    //isFirstButton: function(){
+    //    return (this.questionPath.length === 1);
+    //},
     isFirst: function(){
         return (this.panelPath.length === 1);
     },
     isLast: function(selectedValue){
+        console.log('isLast', selectedValue);
         var key = this.getCurrentPanelKey();
 
         var panelCfg = this.panels[key],
             isLast = true;
 
-        console.log('isLast', key, panelCfg, selectedValue);
         if (panelCfg){
-            if (panelCfg.nextKey){
+            if (panelCfg.nextSection){
                 return false;
             }
 
-            Ext.Array.each(panelCfg.options || [], function(opt){
-                if (opt.nextKey && this.panels[opt.nextKey] &&
-                    (!selectedValue || selectedValue === opt.nextKey)){
+            if (selectedValue === null){ return true; }
+
+            if(selectedValue >= 0 && panelCfg.options && panelCfg.options.length > selectedValue){
+                if (panelCfg.options[selectedValue].nextSection){
                     isLast = false;
                 }
-                return isLast;
-            }, this);
+            }
         }
         return isLast;
     },
     setValue: function(containerValue){
         var containerKey = this.getCurrentPanelKey();
+        console.log('setValue', containerKey,containerValue);
         this.panels[containerKey].value = containerValue;
+
+        console.log('setValue', this.panels);
     },
 
     getPanelCfg: function(key){
         if (!key){
-            key = this.startContainer;
+            key = 'root';
             this.panelPath = [];
         }
         if (!Ext.Array.contains(this.panelPath, key)){
