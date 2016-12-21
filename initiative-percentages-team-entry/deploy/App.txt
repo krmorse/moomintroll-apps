@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 20 2016 18:16:12 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 20 2016 18:22:16 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 20 2016 18:16:12 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Dec 20 2016 18:22:16 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 40414860561;
+        var CHECKSUM = 40098821404;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -927,9 +927,10 @@ Ext.define("TSInitiativePercentageEntry", {
         var me = this;
         console.log('Starting with: ', this.getSettings());
         
-//        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
-//        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
-//        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
+        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+            this._showAppMessage("You do not have permission to run this app.");
+            return;
+        }
         
         var before = this.getSetting('validBeforeMonthEnd'),
             after  = this.getSetting('validAfterMonthEnd');

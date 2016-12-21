@@ -30,9 +30,10 @@ Ext.define("TSInitiativePercentageEntry", {
         var me = this;
         console.log('Starting with: ', this.getSettings());
         
-//        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
-//        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
-//        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
+        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+            this._showAppMessage("You do not have permission to run this app.");
+            return;
+        }
         
         var before = this.getSetting('validBeforeMonthEnd'),
             after  = this.getSetting('validAfterMonthEnd');
