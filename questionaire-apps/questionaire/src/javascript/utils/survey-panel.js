@@ -43,16 +43,6 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
             flex: 1,
             layout: 'hbox',
             items: [{
-            //    xtype: 'rallybutton',
-            //    cls: 'detail-collapse-button icon-leave',
-            //    width: 18,
-            //    margin: '0 10 0 25',
-            //    userAction: 'Close (X) filter panel clicked',
-            //    listeners: {
-            //        click: this.close,
-            //        scope: this
-            //    }
-            //},{
                 xtype: 'container',
                 flex: 1,
                 itemId: 'panelTitle',
@@ -100,7 +90,6 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         this.down('#footer').add([
             {
                 xtype: 'rallybutton',
-               // cls: 'detail-collapse-button icon-leave',
                 text: 'Cancel',
                 float: 'left',
                 cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
@@ -151,10 +140,11 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
 
 
         if (!this._getSurveyContainer().validate()){
+            Rally.ui.notify.Notifier.showWarning({message: 'Please select a choice or enter a text value.'});
             return;
         }
 
-         this.survey.submit(this._getSurveyContainer().getValue()).then({
+         this.survey.submit(this._getSurveyContainer().getValue(), this.preview).then({
             success: function(record){
                 this.fireEvent('submit', record);
             },
@@ -165,7 +155,9 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         }).always(function(){ this.close(); }, this);
     },
     _nextQuestion: function(){
+
         if (!this._getSurveyContainer().validate()){
+            Rally.ui.notify.Notifier.showWarning({message: "Please select a choice or enter a text value."});
             return;
         }
         this.survey.setValue(this._getSurveyContainer().getValue());
@@ -202,9 +194,16 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
             record: this.record
         });
         ct.on('choiceupdated', this._updateButtons, this);
-        this._updateButtons();
+
+        if (panelCfg.type === 'choice'){
+            this._updateButtons(panelCfg.value);
+        } else {
+            this._updateButtons();
+        }
+
     },
     _updateButtons: function(choiceValue){
+        console.log('choiceValue', choiceValue);
         var isLast = this.survey.isLast(choiceValue);
 
         this.down('#backButton').setDisabled(this.survey.isFirst());

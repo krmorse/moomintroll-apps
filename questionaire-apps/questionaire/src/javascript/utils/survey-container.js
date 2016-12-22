@@ -20,7 +20,7 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
             items = this._getNoItems();
 
         if (cfg){
-            if (cfg.type === 'description'){
+            if (cfg.type === 'text'){
                 items = this._getDescriptionItems(cfg);
             } else {
                 items =  this._getChoiceItems(cfg);
@@ -36,9 +36,10 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
         }];
     },
     _getChoiceItems: function(cfg){
-        var items = [];
+        var items = [],
+            options = cfg.options;
 
-        if (cfg.options.length > 0){
+        if (options.length > 0){
             items.push({
                 xtype: 'container',
                 html: cfg.text,
@@ -46,14 +47,20 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
                 padding: 10,
                 margin: 10
             });
-            Ext.Array.each(cfg.options, function(opt){
+
+            for (var i=0; i<cfg.options.length; i++){
+                var opt = options[i];
                 if (opt){
+                    console.log('opt', opt.nextSection, i);
+
+                    var checked = cfg.value === i;
+
                     items.push({
                         xtype: 'rallyradiofield',
                         boxLabel: opt.text,
                         name: 'optChoice',
-                        inputValue: opt.nextKey,
-                        value: cfg.value === opt.nextKey,
+                        inputValue: i,
+                        value: checked,
                         margin: '20 10 20 30',
                         boxLabelAlign: 'after',
                         boxLabelCls: 'survey-question',
@@ -63,13 +70,15 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
                         }
                     });
                 }
-            }, this);
+            }
         }
+        console.log('_getChoiceItems', items);
         return items;
     },
     choiceUpdated: function(radioBtn){
+        console.log('choice updated', radioBtn);
         if (radioBtn.value === true){
-            this.fireEvent('choiceupdated', radioBtn && radioBtn.inputValue);
+            this.fireEvent('choiceupdated', radioBtn.inputValue);
         }
     },
     _getDescriptionItems: function(cfg){
@@ -118,11 +127,14 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
     getValue: function() {
         if (!this.surveyContainerCfg){ return null;}
 
-        if (this.surveyContainerCfg.type === 'description'){
+        if (this.surveyContainerCfg.type === 'text'){
             return this.down('#rteDescription').getValue();
         }
         var key = this.down('rallyradiofield[value=true]');
-        return key && key.inputValue;
+        if (key){
+            return key.inputValue;
+        }
+        return null;
     },
     getNextPanelKey: function(){
         if (!this.surveyContainerCfg){
@@ -130,20 +142,24 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
         }
 
         if (this.surveyContainerCfg.type === 'choice'){
-            return this.getValue();
+            var optionIdx = this.getValue();
+            if (this.surveyContainerCfg.options[optionIdx]){
+                return this.surveyContainerCfg.options[optionIdx].nextSection || null;
+            }
+            return null;
         }
-        return this.surveyContainerCfg.nextKey || null;
+        return this.surveyContainerCfg.nextSection || null;
     },
     validate: function(){
-        return true;
 
         if (!this.surveyContainerCfg){
             return true;
         }
 
-        if (this.surveyContainerCfg.type === 'choice'){
-            return this.getValue();
+        console.log('validate', this.getValue(),this.getValue() >= 0);
+        if (this.surveyContainerCfg.type === 'choice' && this.getValue() !== null){
+            return this.getValue() >= 0;
         }
-        return this.down('#rteDescription').getValue().length > 0;
+        return this.down('#rteDescription') && this.down('#rteDescription').getValue() && this.down('#rteDescription').getValue().length > 0;
     }
 });
