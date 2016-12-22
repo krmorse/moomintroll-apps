@@ -197,9 +197,7 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         var me = this;
         var columns = grid.columns;
         var store = grid.getStore();
-        
-        console.log('getCSVFromRows');
-        
+                
         var model = grid.model;
 
         var csv = [];
@@ -207,7 +205,9 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         csv.push('"' + this._getHeadersFromGrid(grid).join('","') + '"');
         
         Ext.Array.each(rows,function(row){
-            csv.push( me._getCSVFromRecord(Ext.create('recordHolder', { data:row.getData() }), grid, store) );
+            var data = row;
+            if ( Ext.isFunction(row.getData) ) { data = row.getData(); }
+            csv.push( me._getCSVFromRecord(Ext.create('recordHolder', { data:row }), grid, store) );
         });
         
         csv = csv.join('\r\n');

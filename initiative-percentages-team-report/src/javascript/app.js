@@ -56,7 +56,6 @@ Ext.define("TSInitiativePercentageView", {
     _addSelectors: function() {
         var me = this,
             container = this.getSelectorBox();
-//        var project_filter = [{property:'Children.ObjectID',value:''}];
     
         container.add({
             xtype:'combo',
@@ -167,11 +166,13 @@ Ext.define("TSInitiativePercentageView", {
                         initiative.__prefValues[month] = null;
                     });
                     
-                    Ext.Array.each(this.projectsForArtifactOid[oid], function(project_name){
+                    Ext.Object.each(this.projectsForArtifactOid[oid], function(project_oid, project){
                         var clone = Ext.clone(initiative);
-                        clone.Project = project_name;
+                        clone.Team = project;
+                        console.log(project.Name, project);
+                        
                         Ext.Array.each(prefs_by_oid[oid], function(pref){
-                            if ( pref.get('Project')._refObjectName == project_name ) {
+                            if ( pref.get('Project')._refObjectName == project.Name ) {
                                 var pref_month = this._getPrefMonthFromKey(pref.get('Name'));
                                 clone.__prefValues[pref_month] = pref.get("Value");
                                 clone.__pref = pref;
@@ -253,13 +254,13 @@ Ext.define("TSInitiativePercentageView", {
                 
                 Ext.Array.map(snapshots, function(snapshot){
                     hierarchies[snapshot.get('ObjectID')] = snapshot.get('_ItemHierarchy');
-                    var project = snapshot.get('Project').Name
+                    var project = snapshot.get('Project');
                     
                     Ext.Array.each(snapshot.get('_ItemHierarchy'), function(oid) {
                         if ( Ext.isEmpty(me.projectsForArtifactOid[oid])) {
-                            me.projectsForArtifactOid[oid] = [];
+                            me.projectsForArtifactOid[oid] = {};
                         }
-                        me.projectsForArtifactOid[oid] = Ext.Array.merge(me.projectsForArtifactOid[oid],[project]);
+                        me.projectsForArtifactOid[oid][project.ObjectID] = project;
                     });
                 });
                 
@@ -529,11 +530,21 @@ Ext.define("TSInitiativePercentageView", {
             },
             { 
                 text: 'Team',
-                dataIndex: 'Project',
+                dataIndex: 'Team',
                 flex: 1,
                 renderer: function(value,meta,record){
                     if ( Ext.isObject(value) ) {
-                        return value._refObjectName;
+                        return value._refObjectName || value.Name;
+                    }
+                    return value;
+                }
+            },
+            { 
+                text: 'Team ObjectID',
+                dataIndex: 'Team',
+                renderer: function(value,meta,record){
+                    if ( Ext.isObject(value) ) {
+                        return value.ObjectID;
                     }
                     return value;
                 }
@@ -700,20 +711,15 @@ Ext.define("TSInitiativePercentageView", {
       
         if ( !grid && !rows ) { return; }
         
-        if ( !rows ) {
-            rows = [];
-            var store = grid.getStore();
-            var count = store.getTotalCount();
-            for ( var i=0; i<count; i++ ) {
-                rows.push(store.getAt(i));
-            }
+        var promises = [function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } ];
+
+        if ( !rows || rows.length === 0 ) {
+            promises = [function() { return Rally.technicalservices.FileUtilities._getCSVFromCustomBackedGrid(grid); } ];
         }
         var filename = 'report.csv';
         
         this.setLoading("Generating CSV");
-        Deft.Chain.sequence([
-            function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } 
-        ]).then({
+        Deft.Chain.sequence(promises).then({
             scope: this,
             success: function(csv){
                 if (csv && csv.length > 0){

@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage View</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 22 2016 10:40:08 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Dec 22 2016 11:58:10 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 22 2016 10:40:08 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Dec 22 2016 11:58:10 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 79993412375;
+        var CHECKSUM = 80521759474;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -991,9 +991,7 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         var me = this;
         var columns = grid.columns;
         var store = grid.getStore();
-        
-        console.log('getCSVFromRows');
-        
+                
         var model = grid.model;
 
         var csv = [];
@@ -1001,7 +999,9 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         csv.push('"' + this._getHeadersFromGrid(grid).join('","') + '"');
         
         Ext.Array.each(rows,function(row){
-            csv.push( me._getCSVFromRecord(Ext.create('recordHolder', { data:row.getData() }), grid, store) );
+            var data = row;
+            if ( Ext.isFunction(row.getData) ) { data = row.getData(); }
+            csv.push( me._getCSVFromRecord(Ext.create('recordHolder', { data:row }), grid, store) );
         });
         
         csv = csv.join('\r\n');
@@ -1191,7 +1191,7 @@ Ext.define('TSModel',{
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
         { name: '__percentage', type: 'float', defaultValue: 0 },
-        { name: 'Project', type:'object' },
+        { name: 'Team', type:'object' },
         { name: '__prefValues', type:'object' }, // should be a hash with keys = month starts
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }
@@ -1340,7 +1340,6 @@ Ext.define("TSInitiativePercentageView", {
     _addSelectors: function() {
         var me = this,
             container = this.getSelectorBox();
-//        var project_filter = [{property:'Children.ObjectID',value:''}];
     
         container.add({
             xtype:'combo',
@@ -1451,11 +1450,13 @@ Ext.define("TSInitiativePercentageView", {
                         initiative.__prefValues[month] = null;
                     });
                     
-                    Ext.Array.each(this.projectsForArtifactOid[oid], function(project_name){
+                    Ext.Object.each(this.projectsForArtifactOid[oid], function(project_oid, project){
                         var clone = Ext.clone(initiative);
-                        clone.Project = project_name;
+                        clone.Team = project;
+                        console.log(project.Name, project);
+                        
                         Ext.Array.each(prefs_by_oid[oid], function(pref){
-                            if ( pref.get('Project')._refObjectName == project_name ) {
+                            if ( pref.get('Project')._refObjectName == project.Name ) {
                                 var pref_month = this._getPrefMonthFromKey(pref.get('Name'));
                                 clone.__prefValues[pref_month] = pref.get("Value");
                                 clone.__pref = pref;
@@ -1537,13 +1538,13 @@ Ext.define("TSInitiativePercentageView", {
                 
                 Ext.Array.map(snapshots, function(snapshot){
                     hierarchies[snapshot.get('ObjectID')] = snapshot.get('_ItemHierarchy');
-                    var project = snapshot.get('Project').Name
+                    var project = snapshot.get('Project');
                     
                     Ext.Array.each(snapshot.get('_ItemHierarchy'), function(oid) {
                         if ( Ext.isEmpty(me.projectsForArtifactOid[oid])) {
-                            me.projectsForArtifactOid[oid] = [];
+                            me.projectsForArtifactOid[oid] = {};
                         }
-                        me.projectsForArtifactOid[oid] = Ext.Array.merge(me.projectsForArtifactOid[oid],[project]);
+                        me.projectsForArtifactOid[oid][project.ObjectID] = project;
                     });
                 });
                 
@@ -1813,11 +1814,21 @@ Ext.define("TSInitiativePercentageView", {
             },
             { 
                 text: 'Team',
-                dataIndex: 'Project',
+                dataIndex: 'Team',
                 flex: 1,
                 renderer: function(value,meta,record){
                     if ( Ext.isObject(value) ) {
-                        return value._refObjectName;
+                        return value._refObjectName || value.Name;
+                    }
+                    return value;
+                }
+            },
+            { 
+                text: 'Team ObjectID',
+                dataIndex: 'Team',
+                renderer: function(value,meta,record){
+                    if ( Ext.isObject(value) ) {
+                        return value.ObjectID;
                     }
                     return value;
                 }
@@ -1984,20 +1995,15 @@ Ext.define("TSInitiativePercentageView", {
       
         if ( !grid && !rows ) { return; }
         
-        if ( !rows ) {
-            rows = [];
-            var store = grid.getStore();
-            var count = store.getTotalCount();
-            for ( var i=0; i<count; i++ ) {
-                rows.push(store.getAt(i));
-            }
+        var promises = [function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } ];
+
+        if ( !rows || rows.length === 0 ) {
+            promises = [function() { return Rally.technicalservices.FileUtilities._getCSVFromCustomBackedGrid(grid); } ];
         }
         var filename = 'report.csv';
         
         this.setLoading("Generating CSV");
-        Deft.Chain.sequence([
-            function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } 
-        ]).then({
+        Deft.Chain.sequence(promises).then({
             scope: this,
             success: function(csv){
                 if (csv && csv.length > 0){
