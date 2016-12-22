@@ -26,7 +26,10 @@ Ext.define("TSInitiativePercentageView", {
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
-        // this._showAppMessage("You must be a workspace or subscription admin to use this app.");
+        if ( !this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+            this._showAppMessage("You must be a workspace or subscription admin to use this app.");
+            return;
+        }
         
         CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
             success: function(pis) {
@@ -41,7 +44,7 @@ Ext.define("TSInitiativePercentageView", {
         var month_data = [];
         var current_date = new Date();
         
-        for ( var i=0; i<12; i++ ) {
+        for ( var i=0; i<14; i++ ) {
             var month_iso = Ext.Date.format(current_date, 'Y-m');
             month_data.push({name:month_iso,value:month_iso + '-01'});
             current_date = Rally.util.DateTime.add(current_date,'month',-1);
@@ -114,6 +117,8 @@ Ext.define("TSInitiativePercentageView", {
     },
     
     _updateData: function() {
+        var me = this;
+        
         this._clearDisplayBox();
         this.logger.log('starting:', this.selectedStart, this.selectedEnd);
         
@@ -155,7 +160,6 @@ Ext.define("TSInitiativePercentageView", {
                 var months = this._getArrayOfMonthsFromSelected();
                 
                 Ext.Array.each(initiative_data, function(initiative){
-                    this.logger.log('--', initiative.FormattedID);
                     var oid = initiative.ObjectID;
                     
                     initiative.__prefValues = {};
@@ -163,7 +167,6 @@ Ext.define("TSInitiativePercentageView", {
                         initiative.__prefValues[month] = null;
                     });
                     
-                    this.logger.log('project for oid:', this.projectsForArtifactOid[oid]);
                     Ext.Array.each(this.projectsForArtifactOid[oid], function(project_name){
                         var clone = Ext.clone(initiative);
                         clone.Project = project_name;
@@ -192,12 +195,14 @@ Ext.define("TSInitiativePercentageView", {
                 }
             },
             scope: this
-        });
+        }).always(function() { me.setLoading(false); });
     },
     
     _fetchActiveStoryHierarchies: function(project_ref) {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
+        
+        this.setLoading("Finding appropriate stories...");
         
         var month_start = this.selectedStart;
         
@@ -272,7 +277,8 @@ Ext.define("TSInitiativePercentageView", {
         this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
 
         if ( hierarchies.length === 0 ) { return []; }
-        
+        this.setLoading("Finding associated initiatives...");
+
         var oids = [];
         Ext.Array.each(hierarchies, function(hierarchy){
             hierarchy.pop();
@@ -310,7 +316,8 @@ Ext.define("TSInitiativePercentageView", {
     _filterOutInitiatives: function(initiatives) {
         var initiative_filters = this.getSetting('initiativeFieldValues');
         if ( Ext.isEmpty(initiatives) || Ext.isEmpty(initiative_filters) ) { return initiatives; }
-        
+        this.setLoading("Filtering initiatives...");
+
         var deferred = Ext.create('Deft.Deferred');
         if ( Ext.isString(initiative_filters) ) {
             initiative_filters = Ext.JSON.decode(initiative_filters);
@@ -420,6 +427,8 @@ Ext.define("TSInitiativePercentageView", {
             key_prefix = TSKeys.percentageKeyPrefix,
             me = this;
         
+        this.setLoading("Finding entered percentages...");
+
         var promises = [];
         this.logger.log('_fetchAlreadyEnteredData', initiatives.length);
         

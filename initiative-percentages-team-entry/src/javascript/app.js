@@ -30,11 +30,6 @@ Ext.define("TSInitiativePercentageEntry", {
         var me = this;
         console.log('Starting with: ', this.getSettings());
         
-        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
-            this._showAppMessage("You do not have permission to run this app.");
-            return;
-        }
-        
         var before = this.getSetting('validBeforeMonthEnd'),
             after  = this.getSetting('validAfterMonthEnd');
         
@@ -59,7 +54,9 @@ Ext.define("TSInitiativePercentageEntry", {
         var container = this.getSelectorBox();
         var project_filter = [{property:'Children.ObjectID',value:''}];
         
-        project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
+        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+            project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
+        }
         
         var project_config = {
             model:'Project',

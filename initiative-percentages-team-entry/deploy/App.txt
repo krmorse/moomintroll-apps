@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 20 2016 18:22:16 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Dec 21 2016 10:57:21 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 20 2016 18:22:16 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Wed Dec 21 2016 10:57:21 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 40098821404;
+        var CHECKSUM = 39908501884;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -927,11 +927,6 @@ Ext.define("TSInitiativePercentageEntry", {
         var me = this;
         console.log('Starting with: ', this.getSettings());
         
-        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
-            this._showAppMessage("You do not have permission to run this app.");
-            return;
-        }
-        
         var before = this.getSetting('validBeforeMonthEnd'),
             after  = this.getSetting('validAfterMonthEnd');
         
@@ -956,7 +951,9 @@ Ext.define("TSInitiativePercentageEntry", {
         var container = this.getSelectorBox();
         var project_filter = [{property:'Children.ObjectID',value:''}];
         
-        project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
+        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+            project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
+        }
         
         var project_config = {
             model:'Project',
