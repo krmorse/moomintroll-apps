@@ -140,6 +140,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
 
 
         if (!this._getSurveyContainer().validate()){
+            Rally.ui.notify.Notifier.showWarning({message: 'Please select a choice or enter a text value.'});
             return;
         }
 
@@ -154,7 +155,9 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         }).always(function(){ this.close(); }, this);
     },
     _nextQuestion: function(){
+
         if (!this._getSurveyContainer().validate()){
+            Rally.ui.notify.Notifier.showWarning({message: "Please select a choice or enter a text value."});
             return;
         }
         this.survey.setValue(this._getSurveyContainer().getValue());

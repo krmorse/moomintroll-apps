@@ -26,19 +26,29 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
             appID: this.getAppId(),
             success: function(prefs) {
                 console.log('prefs', prefs);
-                this.panels = {};
-                //process prefs
+                if (prefs.panels){
+                    this.panels = Ext.JSON.decode(prefs.panels);
+                } else {
+                    this.panels = {};
+                }
+                console.log('prefs', this.panels);
                 this.fireEvent('ready', this);
             },
             scope: this
         });
     },
+
     getAppId: function(){
         return Rally.getApp().getAppId();
     },
     saveConfiguration: function(){
-        var panelSetting = Ext.JSON.encode(this.panels);
+        //clear out values
+        Ext.Object.each(this.panels, function(panel){
+            panel.value = '';
+        });
 
+
+        var panelSetting = Ext.JSON.encode(this.panels);
         Rally.data.PreferenceManager.update({
             appID: this.getAppId(),
             settings: {
@@ -46,8 +56,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
             },
             scope: this,
             success: function(prefs) {
-                console.log('prefs saved', prefs);
-                //process prefs
+                this.fireEvent('surveysaved', "Survey Settings saved successfully.");
             }
         });
     },
@@ -56,7 +65,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
             this.panels = {
                 root: {
                     id: 'root',
-                    text: 'Please enter the first survey question',
+                    text: '',
                     type: this.TYPE_CHOICE,
                     options: []
                 }
@@ -181,7 +190,7 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
             this.panels = {
                 root: {
                     key: 'root',
-                    text: 'Please enter the first survey question',
+                    text: '',
                     type: this.TYPE_CHOICE,
                     choices: []
                 }

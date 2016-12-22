@@ -31,14 +31,14 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         var sections = [],
             idx = 0;
 
-        //save the current section
-        Ext.Array.each(this.items, function(item){
-            console.log('item', item);
-            if (item.collapsed !== false){
-                var sectionId = item.itemId;
-                this.getSectionOptions(sectionId);
-            }
-        }, this);
+        ////save the current section
+        //Ext.Array.each(this.items, function(item){
+        //    console.log('item', item);
+        //    if (item.collapsed !== false){
+        //        var sectionId = item.itemId;
+        //        this.applySurveySettings(sectionId);
+        //    }
+        //}, this);
 
         Ext.Object.each(this.surveyPanelCfg.getPanels(), function(sectionID, section){
             sections.push(this._getSection(section, idx++));
@@ -89,7 +89,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             listeners: {
                 beforecollapse: function(p){
                   //  console.log('collapse', p.itemId,this.surveyPanelCfg.getPanel(p.itemId).options,this.getSectionOptions(p.itemId));
-                    this.surveyPanelCfg.getPanel(p.itemId).options = this.getSectionOptions(p.itemId);
+                    this.applySurveySettings(p.itemId);
                 },
                 scope: this
             }
@@ -98,7 +98,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSectionItems: function(sectionConfig, idx){
 
         var type = sectionConfig.type;
-
+        console.log('getSectionItems', sectionConfig.type, sectionConfig.id, type=='choice');
         var sectionItems = [{
             xtype: 'textareafield',
             value: sectionConfig.text,
@@ -108,6 +108,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             labelCls: 'rally-upper-bold',
             labelSeparator: '',
             grow: true,
+            emptyText: 'Please type a question...',
             width: '90%',
             margin: 10,
             listeners: {
@@ -126,8 +127,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             width: '90%',
             margin: 10,
             items: [
-                { boxLabel: 'Multiple Choice', name: 'questionType', inputValue: 'choice', checked: type == 'choice' },
-                { boxLabel: 'Text Entry Field', name: 'questionType', inputValue: 'text', checked: type == 'text'}
+                { boxLabel: 'Multiple Choice', name: sectionConfig.id + '-questionType', inputValue: 'choice', checked: type == 'choice' },
+                { boxLabel: 'Text Entry Field', name: sectionConfig.id + '-questionType', inputValue: 'text', checked: type == 'text'}
             ],
             listeners: {
                 scope: this,
@@ -346,10 +347,30 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
 
         var sectionCmp = this.down('#' + sectionId);
         if (sectionCmp){
-            this.surveyPanelCfg.getPanel(sectionId).options = this.getSectionOptions(sectionId);
+            this.applySurveySettings(sectionId);
+
             sectionCmp.removeAll();
             sectionCmp.add(this._getSectionItems(this.surveyPanelCfg.getPanel(sectionId)));
             sectionCmp.doLayout();
+        }
+    },
+    applySurveySettings: function(sectionId, section){
+        if (!section){
+            section = this.surveyPanelCfg.getPanel(sectionId);
+        }
+
+        //section.type = this.getSectionType(sectionId);
+        //section.text = this.getSectionText(sectionId);
+
+        console.log('section.type', section.type);
+        if (section.type === 'choice'){
+            section.options = this.getSectionOptions(sectionId);
+        } else {
+            section.field = this.getSectionField(sectionId);
+            section.exampleValue = this.down(this.getSectionExampleValueItemId(sectionId, true)) &&
+                this.down(this.getSectionExampleValueItemId(sectionId, true)).getValue();
+            section.nextSection = this.down(this.getSectionNextSectionItemId(sectionId, -1, true)) &&
+                this.down(this.getSectionNextSectionItemId(sectionId, -1, true)).getValue();
         }
     },
     refreshSurvey: function(){
@@ -387,8 +408,10 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     changeType: function(group, newValue){
         var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
 
-        if (newValue && newValue.questionType){
-            this.surveyPanelCfg.getPanel(sectionId).type = newValue.questionType;
+        var name = sectionId + '-questionType';
+        if (newValue && newValue[name]){
+            this.surveyPanelCfg.getPanel(sectionId).type = newValue[name];
+            console.log('changeType',sectionId, newValue[name]);
             this.refreshSection(sectionId);
         }
     },
@@ -457,15 +480,17 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         Ext.Object.each(this.surveyPanelCfg.getPanels(), function(sectionId, section){
             section.text = this.getSectionText(sectionId);
             section.type = this.getSectionType(sectionId);
+            console.log('section', section.id, section.type);
             if (section.type === 'choice'){
                 section.options = this.getSectionOptions(sectionId);
             } else {
                 section.options = [];
                 section.field = this.getSectionField(sectionId);
-                section.exampleValue = this.down(this.getSectionExampleValueItemId(sectionId, true)).getValue();
-                section.nextSection = this.down(this.getSectionNextSectionItemId(sectionId, -1, true)).getValue();
+                section.exampleValue = this.down(this.getSectionExampleValueItemId(sectionId, true)) &&
+                    this.down(this.getSectionExampleValueItemId(sectionId, true)).getValue();
+                section.nextSection = this.down(this.getSectionNextSectionItemId(sectionId, -1, true)) &&
+                    this.down(this.getSectionNextSectionItemId(sectionId, -1, true)).getValue();
             }
-
         }, this);
 
         return surveyConfig;
@@ -479,7 +504,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     },
     getSectionType: function(sectionId){
         return this.down(this.getSectionTypeItemId(sectionId, true)).getValue() &&
-            this.down(this.getSectionTypeItemId(sectionId, true)).getValue().questionType;
+            this.down(this.getSectionTypeItemId(sectionId, true)).getValue()[sectionId + '-questionType'];
     },
     getSectionField: function(sectionId, idx){
 

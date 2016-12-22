@@ -151,15 +151,15 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
         return this.surveyContainerCfg.nextSection || null;
     },
     validate: function(){
-        return true;
 
         if (!this.surveyContainerCfg){
             return true;
         }
 
-        if (this.surveyContainerCfg.type === 'choice'){
+        console.log('validate', this.getValue(),this.getValue() >= 0);
+        if (this.surveyContainerCfg.type === 'choice' && this.getValue() !== null){
             return this.getValue() >= 0;
         }
-        return this.down('#rteDescription').getValue().length > 0;
+        return this.down('#rteDescription') && this.down('#rteDescription').getValue() && this.down('#rteDescription').getValue().length > 0;
     }
 });

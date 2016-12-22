@@ -38,7 +38,8 @@ Ext.define("questionaire", {
             listeners: {
                 ready: this.launchApp,
                 scope: this,
-                initerror: this.showErrorNotification
+                initerror: this.showErrorNotification,
+                surveysaved: this.showSuccess
             }
         });
 
@@ -61,6 +62,7 @@ Ext.define("questionaire", {
         this.add({
             xtype: 'rallybutton',
             text: 'Save',
+            width: 100,
             handler: this.saveConfiguration,
             scope: this
         });
@@ -68,6 +70,7 @@ Ext.define("questionaire", {
         this.add({
             xtype: 'rallybutton',
             text: 'Preview',
+            width: 100,
             handler: this.previewConfiguration,
             scope: this
         });
@@ -83,31 +86,60 @@ Ext.define("questionaire", {
         this.logger.log('previewConfiguration', adminPanel.getSurveyConfig());
         this.launchSurveyMode(true, adminPanel.getSurveyConfig());
     },
-    saveConfiguration: function(){
-        var adminPanel = this.down('surveyconfigurationview');
+    saveConfiguration: function(surveyConfig){
+        if (!surveyConfig){
+            var adminPanel = this.down('surveyconfigurationview');
+            surveyConfig = adminPanel.getSurveyConfig();
+        }
 
-        this.logger.log('saveConfiguration', adminPanel.getSurveyConfig());
+        this.logger.log('saveConfiguration', surveyConfig);
+        if (surveyConfig){
+            surveyConfig.saveConfiguration();
+        }
 
     },
     launchSurveyMode: function(preview, surveyConfig){
         this.logger.log('launchSurveyMode', preview, surveyConfig);
 
-        this.addBoxes();
+        this.addBoxes(preview);
 
         this.preview = preview;
         var driver = Ext.create('CA.agile.technicalservices.SurveyDriver',{
             surveyConfig: surveyConfig
         });
-        this.initializeApp(driver);
+        this.initializeApp(driver, surveyConfig);
     },
-    initializeApp: function(driver){
+    initializeApp: function(driver, surveyConfig){
         this.surveyDriver = driver;
         this.logger.log('initializeApp', this.surveyDriver);
         if (this.preview){
-            this.getGridBox().add({
+
+            if (this.getAppMode() === this.MODE_ADMIN){
+                this.getPreviewBox().add({
+                    xtype: 'rallybutton',
+                    text: 'Edit Survey',
+                    width: 100,
+                    handler: function(){
+                        this.launchAdminMode(surveyConfig);
+                    },
+                    scope: this
+                });
+                this.getPreviewBox().add({
+                    xtype: 'rallybutton',
+                    text: 'Save',
+                    width: 100,
+                    handler: function(){
+                        this.saveConfiguration(surveyConfig);
+                    },
+                    scope: this
+                });
+
+            }
+            this.getPreviewBox().add({
                 xtype: 'container',
                 html: '<div class="survey-question"  style="color:red;">Preview Mode - no records will be updated.</div>'
             });
+
         }
         var grid = this.getGridBox().add({
             xtype: 'rallygrid',
@@ -138,8 +170,11 @@ Ext.define("questionaire", {
         surveyPanel.on('failure', this.showErrorNotification, this);
         surveyPanel.on('destroy', this.showGrid, this);
     },
-    addBoxes: function(){
+    addBoxes: function(preview){
         this.removeAll();
+        if (preview){
+            this.add({xtype:'container',itemId:'preview_box',flex:1,layout:'hbox'});
+        }
         this.add({xtype:'container',itemId:'grid_box', flex: 1});
         this.add({xtype:'container',itemId:'survey_box'});
     },
@@ -175,6 +210,9 @@ Ext.define("questionaire", {
     getSurveyBox: function(){
         return this.down('#survey_box');
     },
+    getPreviewBox: function(){
+        return this.down('#preview_box');
+    },
     getSurveyPanelConfig: function(){
         var panelSetting = this.getSetting('panels');
         if (!panelSetting){
@@ -199,6 +237,7 @@ Ext.define("questionaire", {
     getSettingsFields: function(){
         var isUserAdmin = this.isUserAdmin(),
             appMode = this.getAppMode(),
+            surveyType = this.getSurveyType(),
             labelWidth = 125,
             settings = [{
                 xtype: 'container',
@@ -251,15 +290,21 @@ Ext.define("questionaire", {
             labelWidth: labelWidth,
             width: 300
         });
-        settings.push({
-            xtype: 'rallyportfolioitemtypecombobox',
-            fieldLabel: 'Portfolio Item Type',
-            labelAlign: 'right',
-            name: 'surveyType',
-            labelWidth: labelWidth,
-            value: this.getSurveyType(),
-            width: 300
-        });
+        //settings.push({
+        //    xtype: 'rallyportfolioitemtypecombobox',
+        //    fieldLabel: 'Portfolio Item Type',
+        //    labelAlign: 'right',
+        //    name: 'surveyType',
+        //    labelWidth: labelWidth,
+        //    value: surveyType,
+        //    width: 300,
+        //    listeners: {
+        //        ready: function(cb){
+        //            console.log('ready', surveyType);
+        //            cb.setValue(surveyType);
+        //        }
+        //    }
+        //});
         settings.push({
             xtype: 'textarea',
             fieldLabel: 'Query',

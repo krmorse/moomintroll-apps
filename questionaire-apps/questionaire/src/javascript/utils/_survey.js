@@ -85,21 +85,21 @@ Ext.define('CA.agile.technicalservices.Survey',{
         this.setValue(containerValue);
        // this.questionPath.push(selectedChildKey);
        // this.questions[selectedChildKey].value = containerValue;
-
+        console.log('submit', this.panelPath, containerValue);
         var updates = {};
         Ext.Array.each(this.panelPath, function(key){
             var panel = this.panels[key];
             if (panel.field && panel.value){
                 updates[panel.field] = panel.value;
             }
-            if (panel.options && panel.value){
-                if (panel.value >= 0 && panel.options.length > panel.value && panel.options[panel.value].field){
+            if (panel.options && panel.value >= 0){
+                if (panel.options.length > panel.value && panel.options[panel.value].field){
                     updates[ panel.options[panel.value].field] =  panel.options[panel.value].value;
                 }
             }
         }, this);
 
-
+        console.log('updates', updates);
         if (!preview){
             Ext.Object.each(updates, function(field,value){
                 this.record.set(field, value);
@@ -115,7 +115,7 @@ Ext.define('CA.agile.technicalservices.Survey',{
                 scope: this
             });
         } else {
-            var previewMsg = 'The following updates would be made:  <br/>:';
+            var previewMsg = 'The following updates would be made:  <br/>';
             Ext.Object.each(updates, function(field,value){
                 previewMsg += Ext.String.format('{0}: {1} => {2}<br/>', field,this.record.get(field),value);
             }, this);
