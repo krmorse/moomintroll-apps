@@ -274,7 +274,7 @@ Ext.define("TSInitiativePercentageView", {
     },
     
     _fetchInitiativesFromHierarchies: function(hierarchies) {
-        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
+        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies.length);
 
         if ( hierarchies.length === 0 ) { return []; }
         this.setLoading("Finding associated initiatives...");

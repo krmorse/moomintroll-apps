@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage View</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 22 2016 10:31:11 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Dec 22 2016 10:40:08 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 22 2016 10:31:11 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Dec 22 2016 10:40:08 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 79965504544;
+        var CHECKSUM = 79993412375;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1558,7 +1558,7 @@ Ext.define("TSInitiativePercentageView", {
     },
     
     _fetchInitiativesFromHierarchies: function(hierarchies) {
-        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
+        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies.length);
 
         if ( hierarchies.length === 0 ) { return []; }
         this.setLoading("Finding associated initiatives...");
