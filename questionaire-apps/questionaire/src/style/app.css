@@ -1,0 +1,136 @@
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+
+.survey-title {
+    color: #888888;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 12px;
+    padding-top: 5px;
+}
+
+.survey-description {
+    bottom: 7px;
+    color: #888888;
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    width: 100%;
+}
+
+.detail-panel {
+    border-left-style: solid;
+    border-left-width: 5px;
+    border-left-color: #d6d6d6;
+}
+
+.detail-collapse-button {
+    background-color: transparent;
+    color: #a9a9a9;
+    font-size: 16px;
+    line-height: 12px;
+    vertical-align: middle;
+    margin: 10px 0 0 0;
+    padding: 10px 0 0 0;
+    right: 8px;
+    top: 16px;
+    z-index: 2;
+}
+
+.survey-question {
+    color: #000000;
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    margin-left: 15px;
+}
+
+.survey-instructions {
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    margin-left: 15px;
+    color: #000000;
+}
+
+.rally-upper-bold {
+    color: #222;
+    cursor: default;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 12px;
+    text-transform: uppercase;
+    vertical-align: top;
+}
+
+.rally-panel-header {
+    font-size: 10px;
+    background-color: #e6e6e6;
+}
+
+.checkbox-label {
+    vertical-align: bottom;
+    margin-left: 15px;
+}
+
+label.x-item-disabled {
+    color: #000!important;
+}
+
+.title-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 11px;
+    color: #888;
+}
+
+.config-question {
+    font-family: ProximaNova, Helvetica, Arial;
+    font-size: 14px;
+    color: #888;
+    margin: 10px;
+    width: 95%;
+}
+
+.button-no-border {
+    border-color: #fff!important;
+    background-color: #fff;
+    color: #888!important;
+    font-size: 14px;
+}
+
+.button-no-border .x-btn-inner-center{
+    color: #888!important;
+}
+
+.danger-button {
+    color: #B81B10;!important;
+    border-color: #B81B10!important;
+    background-color: #fff;
+    font-size: 14px;
+    border-width: 1px!important;
+    margin: 5px;
+}
+
+.danger-button .x-btn-inner-center {
+    color: #B81B10;!important;
+}
+
+.add-new-section {
+    color: #000!important;
+    font-family: ProximaNovaSemiBold, Helvetica, Arial;
+    font-size: 14px;
+    font-style: italic;
+}

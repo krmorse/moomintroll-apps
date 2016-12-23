@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Questionaire</title>
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Wed Dec 21 2016 18:47:03 GMT-0700 (MST)";
+    </script>
+    
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.1/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            Rally.loadScripts(["src/javascript/utils/__ts-info-link.js","src/javascript/utils/__ts-logger.js","src/javascript/utils/_control-panel-picker.js","src/javascript/utils/_survey.js","src/javascript/utils/_ts_toolbox.js","src/javascript/utils/settings.js","src/javascript/utils/survey-configuration-view.js","src/javascript/utils/survey-configuration.js","src/javascript/utils/survey-container.js","src/javascript/utils/survey-driver.js","src/javascript/utils/survey-panel.js","src/javascript/app.js"],
+	            function() {
+	                Rally.launchApp('questionaire', {
+	                    name: 'Questionaire'
+	                })
+	            }, true);
+        });
+    </script>
+<link rel="stylesheet" type="text/css" href="src/style/app.css">
+
+</head>
+<body></body>
+</html>
