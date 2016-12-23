@@ -11,6 +11,7 @@
         "../common/src/javascript/_ts-field-value-pair-field.js",
         "../common/src/javascript/_ts-field-value-picker-dialog.js",
         "../common/src/javascript/_ts-date-calculator.js",
+        "src/javascript/utils/_ts-project-tree-picker-dialog.js",
         "src/javascript/utils/_ts-initiative-model.js",
         "src/javascript/app.js"
     ]

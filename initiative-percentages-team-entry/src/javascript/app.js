@@ -54,9 +54,7 @@ Ext.define("TSInitiativePercentageEntry", {
         var container = this.getSelectorBox();
         var project_filter = [{property:'Children.ObjectID',value:''}];
         
-        if ( ! this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
-            project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
-        }
+        project_filter.push({property:'Owner', value: this.getContext().getUser()._ref});
         
         var project_config = {
             model:'Project',
@@ -67,46 +65,73 @@ Ext.define("TSInitiativePercentageEntry", {
         
         CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(project_config).then({
             success: function(projects) {
-                if ( projects.length === 0 ) {
-                    this._showAppMessage("You must own at least one project to use this app.");
-                    return;
-                }
-                
-                if ( projects.length == 1 ) {
+                if ( this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
                     container.add({
-                        xtype:'container',
-                        html: Ext.String.format("<b>Team:</b> {0}",
-                            projects[0].get('_refObjectName')
-                        )
+                        xtype:'rallybutton',
+                        text: 'Choose Project',
+                        listeners: {
+                            scope: this,
+                            click: function() {
+                                Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
+                                    autoShow: true,
+                                    title: 'Choose Project',
+                                    multiple: false,
+                                    leavesOnly: true,
+                                    listeners: {
+                                        scope: this,
+                                        itemschosen: function(item){
+                                            console.log('here', item);
+                                            this.selectedProject = item.get('_ref');
+                                            this._updateData();
+                                        }
+                                    }
+                                });
+                            }
+                        }
                     });
+                } else {
+                
+                    if ( projects.length === 0 ) {
+                        this._showAppMessage("You must own at least one project to use this app.");
+                        return;
+                    }
                     
-                    this.selectedProject = projects[0].get('_ref');
-                    this._updateData();
-                    return;
-                }
-                
-                var project_data = Ext.Array.map(projects, function(project){return project.getData();});
-                
-                container.add({
-                    xtype:'combo',
-                    store: Ext.create('Ext.data.Store',{
-                        fields: ['_refObjectName','ObjectID','_ref'],
-                        data: project_data
-                    }),
-                    fieldLabel: 'Team',
-                    labelWidth: 45,
-                    displayField: '_refObjectName',
-                    valueField: '_ref',
-                    typeAhead: true,
-                    queryMode: 'local'
-                }).on(
-                    'change', 
-                    function(cb) {
-                        this.selectedProject = cb.getValue();
+                    if ( projects.length == 1 ) {
+                        container.add({
+                            xtype:'container',
+                            html: Ext.String.format("<b>Team:</b> {0}",
+                                projects[0].get('_refObjectName')
+                            )
+                        });
+                        
+                        this.selectedProject = projects[0].get('_ref');
                         this._updateData();
-                    }, 
-                    me
-                );
+                        return;
+                    }
+                                    
+                    var project_data = Ext.Array.map(projects, function(project){return project.getData();});
+                    
+                    container.add({
+                        xtype:'combo',
+                        store: Ext.create('Ext.data.Store',{
+                            fields: ['_refObjectName','ObjectID','_ref'],
+                            data: project_data
+                        }),
+                        fieldLabel: 'Team',
+                        labelWidth: 45,
+                        displayField: '_refObjectName',
+                        valueField: '_ref',
+                        typeAhead: true,
+                        queryMode: 'local'
+                    }).on(
+                        'change', 
+                        function(cb) {
+                            this.selectedProject = cb.getValue();
+                            this._updateData();
+                        }, 
+                        me
+                    );
+                }
                 
                 container.add({
                     xtype:'container',
