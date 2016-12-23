@@ -3,9 +3,12 @@ Ext.define("TSInitiativePercentageView", {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
+    
+    layout: 'border',
+    
     items: [
-        {xtype:'container',itemId:'selector_box',layout: 'hbox', defaults: { margin: 10 }},
-        {xtype:'container',itemId:'display_box', layout: 'fit'}
+        {xtype:'container',itemId:'selector_box',region: 'north', layout: 'hbox', defaults: { margin: 10 }},
+        {xtype:'container',itemId:'display_box', region: 'center', layout: 'fit'}
     ],
 
     integrationHeaders : {
@@ -14,7 +17,7 @@ Ext.define("TSInitiativePercentageView", {
     
     config: {
         defaultSettings: {
-            query: '(c_Capitalizable = true)'
+            initiativeFieldValues: []
         }
     },
     
@@ -23,7 +26,10 @@ Ext.define("TSInitiativePercentageView", {
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
-        // this._showAppMessage("You must be a workspace or subscription admin to use this app.");
+//        if ( !this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+//            this._showAppMessage("You must be a workspace or subscription admin to use this app.");
+//            return;
+//        }
         
         CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
             success: function(pis) {
@@ -34,50 +40,39 @@ Ext.define("TSInitiativePercentageView", {
         });
     },
     
+    _getMonthData: function() {
+        var month_data = [];
+        var current_date = new Date();
+        
+        for ( var i=0; i<14; i++ ) {
+            var month_iso = Ext.Date.format(current_date, 'Y-m');
+            month_data.push({name:month_iso,value:month_iso + '-01'});
+            current_date = Rally.util.DateTime.add(current_date,'month',-1);
+        }
+        
+        return month_data;
+    },
+    
     _addSelectors: function() {
         var me = this,
             container = this.getSelectorBox();
-//        var project_filter = [{property:'Children.ObjectID',value:''}];
-
-        var month_data = [
-            {name:'January',value: '01'},
-            {name:'February',value: '02'},
-            {name:'March',value: '03'},
-            {name:'April',value: '04'},
-            {name:'May',value: '05'},
-            {name:'June',value: '06'},
-            {name:'July',value: '07'},
-            {name:'August',value: '08'},
-            {name:'September',value: '09'},
-            {name:'October',value: '10'},
-            {name:'November',value: '11'},
-            {name:'December',value: '12'}
-        ];
-        
-        
-        var year_data = [];
-        var current_year = new Date();
-        while ( current_year > new Date(2015,01,01) ) {
-            year_data.push({name: Ext.Date.format(current_year,'o'), value: Ext.Date.format(current_year,'o') });
-            current_year = Rally.util.DateTime.add(current_year,'year',-1);
-        }
     
         container.add({
             xtype:'combo',
             store: Ext.create('Ext.data.Store',{
                 fields: ['name','value'],
-                data: year_data
+                data: this._getMonthData()
             }),
-            fieldLabel: 'Year',
+            fieldLabel: 'From',
             labelWidth: 45,
             displayField: 'name',
             valueField: 'value',
-            typeAhead: true,
+            typeAhead: false,
             queryMode: 'local'
         }).on(
             'change', 
             function(cb) {
-                this.selectedYear = cb.getValue();
+                this.selectedStart = cb.getValue();
                 this._updateData();
             }, 
             me
@@ -87,45 +82,61 @@ Ext.define("TSInitiativePercentageView", {
             xtype:'combo',
             store: Ext.create('Ext.data.Store',{
                 fields: ['name','value'],
-                data: month_data
+                data: this._getMonthData()
             }),
-            fieldLabel: 'Month',
+            fieldLabel: 'Through',
             labelWidth: 45,
             displayField: 'name',
             valueField: 'value',
-            typeAhead: true,
+            typeAhead: false,
             queryMode: 'local'
         }).on(
             'change', 
             function(cb) {
-                this.selectedMonth = cb.getValue();
+                this.selectedEnd = cb.getValue();
                 this._updateData();
             }, 
             me
         );
         
-//                container.add({
-//                    xtype:'container',
-//                    cls: 'month-name-display',
-//                    html: this.monthNameForEntry
-//                });
-//        
-
+        container.add({xtype:'container',flex: 1});
+        
+        container.add({
+            xtype:'rallybutton',
+            itemId:'export_button',
+            cls: 'secondary',
+            text: '<span class="icon-export"> </span>',
+            disabled: true,
+            listeners: {
+                scope: this,
+                click: this._export
+            }
+        });
+        
     },
     
     _updateData: function() {
-        this._clearDisplayBox();
-       
+        var me = this;
         
-        if ( Ext.isEmpty(this.selectedYear) || Ext.isEmpty(this.selectedMonth) ) {
+        this._clearDisplayBox();
+        this.logger.log('starting:', this.selectedStart, this.selectedEnd);
+        
+        if ( Ext.isEmpty(this.selectedStart) || Ext.isEmpty(this.selectedEnd) ) {
             return;
         }
-        this.monthIsoForEntry = this.selectedYear + "-" + this.selectedMonth + "-01";
+        
+        if ( this.selectedStart > this.selectedEnd ) { 
+            var holder = this.selectedStart;
+            this.selectedStart = this.selectedEnd;
+            this.selectedEnd = holder;
+        }
+        
+        this.logger.log('using start/end', this.selectedStart, this.selectedEnd);
+
         this.projectsForArtifactOid = {};
         
-        this.logger.log('_updateData',this.monthIsoForEntry);
-
         Deft.Chain.pipeline([
+            this._fetchCandidateInitiatives,
             this._fetchActiveStoryHierarchies,
             this._fetchInitiativesFromHierarchies,
             this._fetchAlreadyEnteredData
@@ -143,22 +154,31 @@ Ext.define("TSInitiativePercentageView", {
                 
                 // need to have a row for each initiative for each project it is in
                 var final_models = [];
+                
+                // need to make a column for each of the preference months
+                var months = this._getArrayOfMonthsFromSelected();
+                
                 Ext.Array.each(initiative_data, function(initiative){
-                    console.log('--', initiative.FormattedID);
-                    initiative.__monthStart = this.monthIsoForEntry;
                     var oid = initiative.ObjectID;
                     
-                    console.log('project for oid:', this.projectsForArtifactOid[oid]);
-                    Ext.Array.each(this.projectsForArtifactOid[oid], function(project_name){
+                    initiative.__prefValues = {};
+                    Ext.Array.each(months, function(month) {
+                        initiative.__prefValues[month] = null;
+                    });
+                    
+                    Ext.Object.each(this.projectsForArtifactOid[oid], function(project_oid, project){
                         var clone = Ext.clone(initiative);
-                        clone.Project = project_name;
+                        clone.Team = project;
+                        
                         Ext.Array.each(prefs_by_oid[oid], function(pref){
-                            if ( pref.get('Project')._refObjectName == project_name ) {
+                            if ( pref.get('Project')._refObjectName == project.Name ) {
+                                var pref_month = this._getPrefMonthFromKey(pref.get('Name'));
+                                clone.__prefValues[pref_month] = pref.get("Value");
                                 clone.__pref = pref;
                             }
-                        });
+                        },this);
                         final_models.push(clone);
-                    });
+                    },this);
                     
                 },this);
                 
@@ -175,59 +195,159 @@ Ext.define("TSInitiativePercentageView", {
                 }
             },
             scope: this
-        });
+        }).always(function() { me.setLoading(false); });
     },
     
-    _fetchActiveStoryHierarchies: function(project_ref) {
-        var me = this,
+    /*
+     * Only initiatives that matched a particular value during the month
+     * 
+     * Because of the large number of stories and changes to stories potentially available, 
+     * need to limit the query early.
+     */
+    _fetchCandidateInitiatives: function() {
+        this.setLoading("Finding candidate initiatives...");
+
+        var initiative_filters = this.getSetting('initiativeFieldValues'),
             deferred = Ext.create('Deft.Deferred');
         
-        var month_start = this.monthIsoForEntry;
+        if ( Ext.isString(initiative_filters) ) {
+            initiative_filters = Ext.JSON.decode(initiative_filters);
+        }
+        var month_start = this.selectedStart;
         var next_month = Rally.util.DateTime.toIsoString(
             Rally.util.DateTime.add(
-                Rally.util.DateTime.fromIsoString(month_start), 'month', 1
+                Rally.util.DateTime.fromIsoString(this.selectedEnd), 'month', 1
             )
         );
+
+        var filters = Ext.create('Rally.data.lookback.QueryFilter',{property:'_TypeHierarchy', operator:'in', value:[this.PortfolioItemTypes[1].get('TypePath')]});
+        
+        if ( !Ext.isEmpty(initiative_filters) ) {
+            filters = filters.and(
+                Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'>=', value:month_start})
+            );
+        
+            filters = filters.and(
+                Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'<', value:next_month})
+            );
+            
+            var filterized_initiative_filters = Rally.data.lookback.QueryFilter.and(initiative_filters);
+            filters = filters.and(filterized_initiative_filters);
+        } else {
+            filters = filters.and(Ext.create('Rally.data.lookback.QueryFilter',{property:'__At', value: 'current'}));
+        }
         
         var config = {
-            find: {
-                _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
-                "$or": [
-                {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
-                    "_PreviousValues.ScheduleState": { "$exists": true },
-                    "_ValidFrom": {
-                        "$gte": month_start,
-                        "$lt":  next_month
-                    }
-                },
-                {
-                    ScheduleState: { "$in": ['Defined','In-Progress','Completed'] },
-                    __At: 'current'
-                }
-                ]
-            },
-            fetch: ['ObjectID','_ItemHierarchy','Project'],
-            hydrate: ['Project']
+            filters: filters,
+            fetch: ['ObjectID','FormattedID','Name'],
+            limit: Infinity,
+            compress: true
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            scope: this,
             success: function(snapshots) {
+                this.logger.log('candidate initiative snapshots:', snapshots.length);
+                
                 if ( snapshots.length === 0 ) {
-                    deferred.reject({msg: 'There were no active stories in the month.'});
+                    deferred.reject({msg: 'No initiatives meet the filters.'});
+                    return;
+                }
+                
+                var snaps_by_oid = {};
+                Ext.Array.each(snapshots, function(snapshot){
+                    snaps_by_oid[snapshot.get('ObjectID')] = snapshot;
+                });
+                
+                this.initiative_snaps_by_oid = snaps_by_oid;
+                
+                deferred.resolve( Ext.Object.getValues(snaps_by_oid) );
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    
+    _fetchActiveStoryHierarchies: function(initiative_snapshots) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred');
+        
+        this.setLoading("Finding appropriate stories...");
+        
+        var month_start = this.selectedStart;
+        
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(this.selectedEnd), 'month', 1
+            )
+        );
+        this.logger.log('_fetchActiveStoryHierarchies', month_start, next_month);
+        
+        //
+        var active_states = ['Defined','In-Progress','Completed'];
+        var valid_types = [null,'Standard'];
+        var initiative_oids = Ext.Array.map(initiative_snapshots, function(snap){ return snap.get('ObjectID'); });
+        
+        var config = {
+            find: {
+                "_ItemHierarchy": { "$in": initiative_oids },
+                _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
+                "Children": null,
+                "ScheduleState": { "$in":  active_states},
+                "c_StoryType": { "$in": valid_types },
+                
+                "$or": [
+                    {
+                        "_PreviousValues.ScheduleState": { "$exists": true },
+                        "_ValidFrom": {
+                            "$gte": month_start,
+                            "$lt":  next_month
+                        }
+                    },
+    // can change project, too!
+                    {
+                        ScheduleState: { "$in":  active_states},
+                        "_PreviousValues.Project": { "$exists": true },
+                        "_ValidFrom": {
+                            "$gte": month_start,
+                            "$lt":  next_month
+                        }
+                    },
+                    {
+                        __At: month_start
+                    },
+                    {
+                        __At: next_month
+                    }
+                ]
+            },
+            fetch: ['ObjectID','_ItemHierarchy','Project'],
+            hydrate: ['Project'],
+            useHttpPost: true,
+            limit: Infinity
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            scope: this,
+            success: function(snapshots) {
+                this.logger.log("Got story snapshots:", snapshots.length);
+                if ( snapshots.length === 0 ) {
+                    deferred.reject({msg: 'There were no active stories in the time period.'});
                     return;
                 }
                 var hierarchies = {};
                 
                 Ext.Array.map(snapshots, function(snapshot){
                     hierarchies[snapshot.get('ObjectID')] = snapshot.get('_ItemHierarchy');
-                    var project = snapshot.get('Project').Name
+                    var project = snapshot.get('Project');
                     
                     Ext.Array.each(snapshot.get('_ItemHierarchy'), function(oid) {
                         if ( Ext.isEmpty(me.projectsForArtifactOid[oid])) {
-                            me.projectsForArtifactOid[oid] = [];
+                            me.projectsForArtifactOid[oid] = { };
                         }
-                        me.projectsForArtifactOid[oid] = Ext.Array.merge(me.projectsForArtifactOid[oid],[project]);
+                        me.projectsForArtifactOid[oid][project.ObjectID] = project;
                     });
                 });
                 
@@ -242,63 +362,124 @@ Ext.define("TSInitiativePercentageView", {
     },
     
     _fetchInitiativesFromHierarchies: function(hierarchies) {
-        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies);
+        this.logger.log('_fetchInitiativesFromHierarchies',hierarchies.length);
 
-        var oids = [];
-        Ext.Array.each(hierarchies, function(hierarchy){
-            hierarchy.pop();
-            oids = Ext.Array.push(oids,hierarchy);
-        });
+        if ( hierarchies.length === 0 ) { return []; }
+        return Ext.Object.getValues(this.initiative_snaps_by_oid);
         
-        oids = Ext.Array.unique(oids);
-        var filters = Rally.data.wsapi.Filter.or(
-            Ext.Array.map(oids, function(oid){
-                return { property:'ObjectID',value:oid }
-            })
-        );
-        
-        var base_filter = this.getBaseInitiativeFilter();
-        if ( !Ext.isEmpty(base_filter) ) {
-            filters = filters.and(base_filter);
-        }
-        
-        var config = {
-            model: this.PortfolioItemTypes[1].get('TypePath'),
-            filters: filters,
-            fetch: ['FormattedID','Name','Notes','Description','Project'],
-            enablePostGet: true,
-            context: { project: null }
-        };
-        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+//        this.setLoading("Finding associated initiatives...");
+//
+//        var oids = [];
+//        Ext.Array.each(hierarchies, function(hierarchy){
+//            hierarchy.pop();
+//            oids = Ext.Array.push(oids,hierarchy);
+//        });
+//        
+//        oids = Ext.Array.unique(oids);
+//        this.logger.log("Searching for this many PI oids:", oids.length);
+//        
+//        var filter_array =  [];
+//        Ext.Array.each(oids, function(oid){
+//            filter_array.push({ property:'ObjectID',value:oid });
+//        });
+//        
+//        this.logger.log('Got array');
+//        var filters = Rally.data.wsapi.Filter.or( filter_array );
+//        
+//        this.logger.log('Got filter');
+//        
+//        if ( Ext.isEmpty(filters) ) { return []; }
+//        
+//        var base_filter = this.getBaseInitiativeFilter();
+//        if ( !Ext.isEmpty(base_filter) ) {
+//            filters = filters.and(base_filter);
+//        }
+//        
+//        this.logger.log('-- here');
+//        this.logger.log('--', this.PortfolioItemTypes[1].get('TypePath'));
+//
+//        var config = {
+//            model: this.PortfolioItemTypes[1].get('TypePath'),
+//            filters: filters,
+//            fetch: ['FormattedID','Name'],
+//            enablePostGet: true,
+//            context: { project: null }
+//        };
+//         
+//        this.logger.log('config:', config);
+//        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
     },
     
-    _fetchAlreadyEnteredData: function(initiatives) {
-        var deferred = Ext.create('Deft.Deferred'),
-            key_prefix = TSKeys.percentageKeyPrefix,
-            month_start = this.monthIsoForEntry;
-        
+
+    
+    _fetchAlreadyEnteredDataForMonth: function(month_start,key_prefix) {
+        this.logger.log('_fetchAlreadyEnteredDataForMonth', month_start, key_prefix);
         var config = {
             model: 'Preference',
             fetch: ['Name','Value','Project'],
             filters: [
                 {property:'Name',operator:'contains',value: key_prefix + "." + month_start}
             ],
+            pageSize: 2000,
             context: { project: null }
         };
         
-        CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config).then({
+        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+    },
+    
+    _getArrayOfMonthsFromSelected: function() {
+        var start = this.selectedStart;
+        var end = this.selectedEnd;
+        this.logger.log("_getArrayOfMonthsFromSelected", start, end);
+        var months = [start];
+        var next_month = Rally.util.DateTime.fromIsoString(start);
+        var next_month_iso = start;
+        
+        while ( start != end && end > next_month_iso ) {
+            next_month = Rally.util.DateTime.add(next_month, 'month', 1),
+            
+            next_month_iso = Ext.Date.format(next_month,'Y-m-01');
+            months.push(next_month_iso);
+        }
+        
+        months = Ext.Array.unique(months);
+
+        this.logger.log('for months:', months);
+        return months;
+    },
+    
+    _fetchAlreadyEnteredData: function(initiatives) {
+        var deferred = Ext.create('Deft.Deferred'),
+            key_prefix = TSKeys.percentageKeyPrefix,
+            me = this;
+        
+        this.setLoading("Finding entered percentages...");
+
+        var promises = [];
+        this.logger.log('_fetchAlreadyEnteredData', initiatives.length);
+        
+        Ext.Array.each(this._getArrayOfMonthsFromSelected(), function(month){
+            promises.push( function() { return me._fetchAlreadyEnteredDataForMonth(month,key_prefix); } );
+        });
+        
+        Deft.Chain.sequence(promises).then({
+            scope: this,
             success: function(prefs) {
+                prefs = Ext.Array.flatten(prefs);
+                
+                this.logger.log('found prefs:', prefs.length);
+                
                 var prefs_by_oid = {};
                 Ext.Array.each(prefs, function(pref){
-                    var pref_name = pref.get('Name');
-                    var pref_array = pref_name.split('.');
-                    if ( pref_array.length != 5 ) { return; }
-                    if (Ext.isEmpty(prefs_by_oid[pref_array[4]])) {
-                        prefs_by_oid[pref_array[4]] = [];
+                    var pref_oid = this._getPrefObjectFromKey(pref.get('Name'));
+                    
+                    if ( Ext.isEmpty(pref_oid) ) { return; }
+                    if (Ext.isEmpty(prefs_by_oid[pref_oid])) {
+                        prefs_by_oid[pref_oid] = [];
                     }
                     
-                    prefs_by_oid[pref_array[4]].push(pref);
-                });
+                    prefs_by_oid[pref_oid].push(pref);
+                },this);
                 deferred.resolve([initiatives,prefs_by_oid]);
             },
             failure: function(msg) {
@@ -309,20 +490,32 @@ Ext.define("TSInitiativePercentageView", {
         return deferred.promise;
     },
     
+    _getPrefObjectFromKey: function(key) {
+        var pref_array = key.split('.');
+        if ( pref_array.length != 5 ) { return null; }
+        return pref_array[4];
+    },
+    
+    _getPrefMonthFromKey: function(key) {
+        var pref_array = key.split('.');
+        if ( pref_array.length != 5 ) { return null; }
+        return pref_array[3];
+    },
+    
     displayGrid: function(initiatives) {
         this.logger.log('displayGrid', initiatives);
         
         var store = Ext.create('Rally.data.custom.Store',{
             model:'TSModel',
             data: initiatives,
-            groupField: 'Project'
+            groupField: 'ObjectID'
         });
         
         this._clearDisplayBox();
         
         var display_box = this.getDisplayBox();
         
-        display_box.add({
+        this.grid = display_box.add({
             xtype:'rallygrid',
             columnCfgs: this._getColumns(),
             store: store,
@@ -333,50 +526,111 @@ Ext.define("TSInitiativePercentageView", {
             features: [{
                 ftype: 'grouping',
                 startCollapsed: true,
-                groupHeaderTpl: 'Team: {name}'
+                groupHeaderTpl: '{[values.rows[0].data.FormattedID]}: {[values.rows[0].data.Name]}'
             }]
         });
+        this.down('#export_button').setDisabled(false);
     },
     
     _getColumns: function() {
-        return [
+        var columns = [
+//            { 
+//                text: 'ID',       
+//                xtype: 'templatecolumn', 
+//                tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate',{
+//                    showIcon: false,
+//                    showHover: true
+//                })
+//            },
+//            { dataIndex:'Name',text:'Name', flex: 1},
             { 
-                text: 'ID',       
-                xtype: 'templatecolumn', 
-                tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate',{
-                    showIcon: false,
-                    showHover: true
-                })
+                dataIndex: 'FormattedID',
+                text: 'ID',
+                hidden: true
             },
-            { dataIndex:'Name',text:'Name', flex: 1},
+            {
+                dataIndex: 'Name',
+                text: 'Name',
+                hidden: true
+            },
             { 
-                dataIndex:'__percentage', 
-                text: 'Percentage', 
+                text: 'Team',
+                dataIndex: 'Team',
+                flex: 1,
+                renderer: function(value,meta,record){
+                    if ( Ext.isObject(value) ) {
+                        return value._refObjectName || value.Name;
+                    }
+                    return value;
+                }
+            },
+            { 
+                text: 'Team ObjectID',
+                dataIndex: 'Team',
+                renderer: function(value,meta,record){
+                    if ( Ext.isObject(value) ) {
+                        return value.ObjectID;
+                    }
+                    return value;
+                }
+            }];
+        
+        var months = this._getArrayOfMonthsFromSelected();
+        Ext.Array.each(months, function(month){
+            columns.push({ 
+                dataIndex:'__prefValues', 
+                text: 'Percentage (' + month + ')', 
                 width: 100,
                 align: 'center',
                 renderer: function(v) {
                     if ( Ext.isEmpty(v) ) { return ""; }
-                    return v + "%";
+                    var value = v[month];
+                    
+                    if ( Ext.isString(value) ) {
+                        value = Ext.JSON.decode(value);
+                    }
+                    if ( Ext.isEmpty(value) ) { return ""; }
+                    
+                    return value.__percentage + "%";
                 }
-            },
-            {
-                dataIndex: '__lastChangedBy',
-                text: 'Last Changed By',
+            });
+            columns.push({ 
+                dataIndex:'__prefValues', 
+                text: 'Entered By (' + month + ')', 
+                width: 100,
+                align: 'center',
                 renderer: function(v) {
                     if ( Ext.isEmpty(v) ) { return ""; }
-                    if ( !Ext.isObject(v) ) { return v; }
-                    return v._refObjectName;
+                    var value = v[month];
+                    
+                    if ( Ext.isString(value) ) {
+                        value = Ext.JSON.decode(value);
+                    }
+                    if ( Ext.isEmpty(value) ) { return ""; }
+                    
+                    return value.__lastChangedBy._refObjectName;
                 }
-            },
-            {
-                dataIndex: '__lastChangedOn',
-                text: 'Last Changed On',
+            });
+            columns.push({ 
+                dataIndex:'__prefValues', 
+                text: 'Change Date (' + month + ')', 
+                width: 100,
+                align: 'center',
                 renderer: function(v) {
                     if ( Ext.isEmpty(v) ) { return ""; }
-                    return v;
+                    var value = v[month];
+                    
+                    if ( Ext.isString(value) ) {
+                        value = Ext.JSON.decode(value);
+                    }
+                    if ( Ext.isEmpty(value) ) { return ""; }
+                    
+                    return value.__lastChangedOn;
                 }
-            }
-        ];
+            });            
+        });
+           
+        return columns;
     },
     
     getSelectorBox: function() {
@@ -415,36 +669,42 @@ Ext.define("TSInitiativePercentageView", {
     },
     
     getSettingsFields: function() {
+        var type_path = this.PortfolioItemTypes[1].get('TypePath');
         return [
             {
-                xtype: 'textarea',
-                fieldLabel: 'Query',
-                labelAlign: 'right',
-//                labelWidth: labelWidth,
-                name: 'query',
-                anchor: '100%',
-                cls: 'query-field',
-                margin: '25 70 0 0',
-                plugins: [
-                    {
-                        ptype: 'rallyhelpfield',
-                        helpId: 194
-                    },
-                    'rallyfieldvalidationui'
-                ],
-                validateOnBlur: false,
-                validateOnChange: false,
-                validator: function(value) {
-                    try {
-                        if (value) {
-                            Rally.data.wsapi.Filter.fromQueryString(value);
-                        }
-                        return true;
-                    } catch (e) {
-                        return e.message;
-                    }
-                }
+                xtype:'tsfieldvaluepairfield',
+                name: 'initiativeFieldValues',
+                model: type_path,
+                fieldLabel: 'Initiative Field Matched During the Month:'
             }
+//            {
+//                xtype: 'textarea',
+//                fieldLabel: 'Query',
+//                labelAlign: 'right',
+//                name: 'query',
+//                anchor: '100%',
+//                cls: 'query-field',
+//                margin: '25 70 0 0',
+//                plugins: [
+//                    {
+//                        ptype: 'rallyhelpfield',
+//                        helpId: 194
+//                    },
+//                    'rallyfieldvalidationui'
+//                ],
+//                validateOnBlur: false,
+//                validateOnChange: false,
+//                validator: function(value) {
+//                    try {
+//                        if (value) {
+//                            Rally.data.wsapi.Filter.fromQueryString(value);
+//                        }
+//                        return true;
+//                    } catch (e) {
+//                        return e.message;
+//                    }
+//                }
+//            }
         ];
     },
     
@@ -465,6 +725,36 @@ Ext.define("TSInitiativePercentageView", {
     
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
+    },
+    
+    _export: function(){
+        var me = this;
+        this.logger.log('_export');
+        
+        var grid = this.down('rallygrid');
+        var rows = this.rows;
+      
+        if ( !grid && !rows ) { return; }
+        
+        var promises = [function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } ];
+
+        if ( !rows || rows.length === 0 ) {
+            promises = [function() { return Rally.technicalservices.FileUtilities._getCSVFromCustomBackedGrid(grid); } ];
+        }
+        var filename = 'report.csv';
+        
+        this.setLoading("Generating CSV");
+        Deft.Chain.sequence(promises).then({
+            scope: this,
+            success: function(csv){
+                if (csv && csv.length > 0){
+                    Rally.technicalservices.FileUtilities.saveCSVToFile(csv,filename);
+                } else {
+                    Rally.ui.notify.Notifier.showWarning({message: 'No data to export'});
+                }
+                
+            }
+        }).always(function() { me.setLoading(false); });
     }
     
 });

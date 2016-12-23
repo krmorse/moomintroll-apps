@@ -9,7 +9,8 @@ Ext.define('TSModel',{
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
         { name: '__percentage', type: 'float', defaultValue: 0 },
-        { name: 'Project', type:'object' },
+        { name: 'Team', type:'object' },
+        { name: '__prefValues', type:'object' }, // should be a hash with keys = month starts
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }
             var value = Ext.JSON.decode(pref.get('Value'));
