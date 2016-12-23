@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage View</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Dec 22 2016 11:58:10 GMT-0800 (PST) -->
+    <!--  Build Date: Fri Dec 23 2016 10:18:59 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Dec 22 2016 11:58:10 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Fri Dec 23 2016 10:18:59 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 80521759474;
+        var CHECKSUM = 82954154925;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1310,10 +1310,10 @@ Ext.define("TSInitiativePercentageView", {
 //        console.log('subadmin:', this.getContext().getPermissions().isSubscriptionAdmin());
 //        console.log('wsadmin:',  this.getContext().getPermissions().isWorkspaceAdmin());
 //        console.log('eitheradmin:',  this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin());
-        if ( !this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
-            this._showAppMessage("You must be a workspace or subscription admin to use this app.");
-            return;
-        }
+//        if ( !this.getContext().getPermissions().isWorkspaceOrSubscriptionAdmin() ) {
+//            this._showAppMessage("You must be a workspace or subscription admin to use this app.");
+//            return;
+//        }
         
         CA.agile.technicalservices.util.WsapiUtils.getPortfolioItemTypes().then({
             success: function(pis) {
@@ -1420,9 +1420,9 @@ Ext.define("TSInitiativePercentageView", {
         this.projectsForArtifactOid = {};
         
         Deft.Chain.pipeline([
+            this._fetchCandidateInitiatives,
             this._fetchActiveStoryHierarchies,
             this._fetchInitiativesFromHierarchies,
-            this._filterOutInitiatives,
             this._fetchAlreadyEnteredData
         ],this).then({
             success: function(results) {
@@ -1453,7 +1453,6 @@ Ext.define("TSInitiativePercentageView", {
                     Ext.Object.each(this.projectsForArtifactOid[oid], function(project_oid, project){
                         var clone = Ext.clone(initiative);
                         clone.Team = project;
-                        console.log(project.Name, project);
                         
                         Ext.Array.each(prefs_by_oid[oid], function(pref){
                             if ( pref.get('Project')._refObjectName == project.Name ) {
@@ -1483,7 +1482,79 @@ Ext.define("TSInitiativePercentageView", {
         }).always(function() { me.setLoading(false); });
     },
     
-    _fetchActiveStoryHierarchies: function(project_ref) {
+    /*
+     * Only initiatives that matched a particular value during the month
+     * 
+     * Because of the large number of stories and changes to stories potentially available, 
+     * need to limit the query early.
+     */
+    _fetchCandidateInitiatives: function() {
+        this.setLoading("Finding candidate initiatives...");
+
+        var initiative_filters = this.getSetting('initiativeFieldValues'),
+            deferred = Ext.create('Deft.Deferred');
+        
+        if ( Ext.isString(initiative_filters) ) {
+            initiative_filters = Ext.JSON.decode(initiative_filters);
+        }
+        var month_start = this.selectedStart;
+        var next_month = Rally.util.DateTime.toIsoString(
+            Rally.util.DateTime.add(
+                Rally.util.DateTime.fromIsoString(this.selectedEnd), 'month', 1
+            )
+        );
+
+        var filters = Ext.create('Rally.data.lookback.QueryFilter',{property:'_TypeHierarchy', operator:'in', value:[this.PortfolioItemTypes[1].get('TypePath')]});
+        
+        if ( !Ext.isEmpty(initiative_filters) ) {
+            filters = filters.and(
+                Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'>=', value:month_start})
+            );
+        
+            filters = filters.and(
+                Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'<', value:next_month})
+            );
+            
+            var filterized_initiative_filters = Rally.data.lookback.QueryFilter.and(initiative_filters);
+            filters = filters.and(filterized_initiative_filters);
+        } else {
+            filters = filters.and(Ext.create('Rally.data.lookback.QueryFilter',{property:'__At', value: 'current'}));
+        }
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','FormattedID','Name'],
+            limit: Infinity,
+            compress: true
+        };
+        
+        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            scope: this,
+            success: function(snapshots) {
+                this.logger.log('candidate initiative snapshots:', snapshots.length);
+                
+                if ( snapshots.length === 0 ) {
+                    deferred.reject({msg: 'No initiatives meet the filters.'});
+                    return;
+                }
+                
+                var snaps_by_oid = {};
+                Ext.Array.each(snapshots, function(snapshot){
+                    snaps_by_oid[snapshot.get('ObjectID')] = snapshot;
+                });
+                
+                this.initiative_snaps_by_oid = snaps_by_oid;
+                
+                deferred.resolve( Ext.Object.getValues(snaps_by_oid) );
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    
+    _fetchActiveStoryHierarchies: function(initiative_snapshots) {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
         
@@ -1500,38 +1571,54 @@ Ext.define("TSInitiativePercentageView", {
         
         //
         var active_states = ['Defined','In-Progress','Completed'];
+        var valid_types = [null,'Standard'];
+        var initiative_oids = Ext.Array.map(initiative_snapshots, function(snap){ return snap.get('ObjectID'); });
         
         var config = {
             find: {
+                "_ItemHierarchy": { "$in": initiative_oids },
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
+                "Children": null,
+                "ScheduleState": { "$in":  active_states},
+                "c_StoryType": { "$in": valid_types },
+                
                 "$or": [
-                {
-                    ScheduleState: { "$in":  active_states},
-                    "_PreviousValues.ScheduleState": { "$exists": true },
-                    "_ValidFrom": {
-                        "$gte": month_start,
-                        "$lt":  next_month
+                    {
+                        "_PreviousValues.ScheduleState": { "$exists": true },
+                        "_ValidFrom": {
+                            "$gte": month_start,
+                            "$lt":  next_month
+                        }
+                    },
+    // can change project, too!
+                    {
+                        ScheduleState: { "$in":  active_states},
+                        "_PreviousValues.Project": { "$exists": true },
+                        "_ValidFrom": {
+                            "$gte": month_start,
+                            "$lt":  next_month
+                        }
+                    },
+                    {
+                        __At: month_start
+                    },
+                    {
+                        __At: next_month
                     }
-                },
-                {
-                    ScheduleState: { "$in": active_states },
-                    __At: month_start
-                },
-                {
-                    ScheduleState: { "$in": active_states },
-                    __At: next_month
-                }
                 ]
             },
             fetch: ['ObjectID','_ItemHierarchy','Project'],
             hydrate: ['Project'],
-            useHttpPost: true
+            useHttpPost: true,
+            limit: Infinity
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
+            scope: this,
             success: function(snapshots) {
+                this.logger.log("Got story snapshots:", snapshots.length);
                 if ( snapshots.length === 0 ) {
-                    deferred.reject({msg: 'There were no active stories in the month.'});
+                    deferred.reject({msg: 'There were no active stories in the time period.'});
                     return;
                 }
                 var hierarchies = {};
@@ -1542,7 +1629,7 @@ Ext.define("TSInitiativePercentageView", {
                     
                     Ext.Array.each(snapshot.get('_ItemHierarchy'), function(oid) {
                         if ( Ext.isEmpty(me.projectsForArtifactOid[oid])) {
-                            me.projectsForArtifactOid[oid] = {};
+                            me.projectsForArtifactOid[oid] = { };
                         }
                         me.projectsForArtifactOid[oid][project.ObjectID] = project;
                     });
@@ -1562,115 +1649,52 @@ Ext.define("TSInitiativePercentageView", {
         this.logger.log('_fetchInitiativesFromHierarchies',hierarchies.length);
 
         if ( hierarchies.length === 0 ) { return []; }
-        this.setLoading("Finding associated initiatives...");
-
-        var oids = [];
-        Ext.Array.each(hierarchies, function(hierarchy){
-            hierarchy.pop();
-            oids = Ext.Array.push(oids,hierarchy);
-        });
+        return Ext.Object.getValues(this.initiative_snaps_by_oid);
         
-        oids = Ext.Array.unique(oids);
-        var filters = Rally.data.wsapi.Filter.or(
-            Ext.Array.map(oids, function(oid){
-                return { property:'ObjectID',value:oid }
-            })
-        );
-        
-        if ( Ext.isEmpty(filters) ) { return []; }
-        
-        var base_filter = this.getBaseInitiativeFilter();
-        if ( !Ext.isEmpty(base_filter) ) {
-            filters = filters.and(base_filter);
-        }
-        
-        var config = {
-            model: this.PortfolioItemTypes[1].get('TypePath'),
-            filters: filters,
-            fetch: ['FormattedID','Name','Notes','Description','Project'],
-            enablePostGet: true,
-            context: { project: null }
-        };
-        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
+//        this.setLoading("Finding associated initiatives...");
+//
+//        var oids = [];
+//        Ext.Array.each(hierarchies, function(hierarchy){
+//            hierarchy.pop();
+//            oids = Ext.Array.push(oids,hierarchy);
+//        });
+//        
+//        oids = Ext.Array.unique(oids);
+//        this.logger.log("Searching for this many PI oids:", oids.length);
+//        
+//        var filter_array =  [];
+//        Ext.Array.each(oids, function(oid){
+//            filter_array.push({ property:'ObjectID',value:oid });
+//        });
+//        
+//        this.logger.log('Got array');
+//        var filters = Rally.data.wsapi.Filter.or( filter_array );
+//        
+//        this.logger.log('Got filter');
+//        
+//        if ( Ext.isEmpty(filters) ) { return []; }
+//        
+//        var base_filter = this.getBaseInitiativeFilter();
+//        if ( !Ext.isEmpty(base_filter) ) {
+//            filters = filters.and(base_filter);
+//        }
+//        
+//        this.logger.log('-- here');
+//        this.logger.log('--', this.PortfolioItemTypes[1].get('TypePath'));
+//
+//        var config = {
+//            model: this.PortfolioItemTypes[1].get('TypePath'),
+//            filters: filters,
+//            fetch: ['FormattedID','Name'],
+//            enablePostGet: true,
+//            context: { project: null }
+//        };
+//         
+//        this.logger.log('config:', config);
+//        return CA.agile.technicalservices.util.WsapiUtils.loadWsapiRecords(config);
     },
     
-    /*
-     * Want to filter out initiatives that did not match a particular value during the month
-     * 
-     */
-    _filterOutInitiatives: function(initiatives) {
-        var initiative_filters = this.getSetting('initiativeFieldValues');
-        if ( Ext.isEmpty(initiatives) || Ext.isEmpty(initiative_filters) ) { return initiatives; }
-        this.setLoading("Filtering initiatives...");
 
-        var deferred = Ext.create('Deft.Deferred');
-        if ( Ext.isString(initiative_filters) ) {
-            initiative_filters = Ext.JSON.decode(initiative_filters);
-        }
-        var month_start = this.selectedStart;
-        var next_month = Rally.util.DateTime.toIsoString(
-            Rally.util.DateTime.add(
-                Rally.util.DateTime.fromIsoString(this.selectedEnd), 'month', 1
-            )
-        );
-        
-        this.logger.log('_filterOutInitiatives', month_start, next_month);
-
-        var oids = Ext.Array.map(initiatives, function(initiative) { return initiative.get('ObjectID'); });
-        
-        initiative_filters.push({property:'ObjectID',operator:'in', value: oids});
-        
-        var base_filters = Rally.data.lookback.QueryFilter.and(initiative_filters);
-        
-        var filters = base_filters.and(
-            Ext.create('Rally.data.lookback.QueryFilter',{property:'_TypeHierarchy', operator:'in', value:['PortfolioItem']})
-        );
-        
-        filters = filters.and(
-            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'>=', value:month_start})
-        );
-    
-        filters = filters.and(
-            Ext.create('Rally.data.lookback.QueryFilter',{property:'_ValidFrom', operator:'<', value:next_month})
-        );
-        
-        var config = {
-            filters: filters,
-            fetch: ['ObjectID'],
-            pageSize: 2000,
-            useHttpPost: true
-        };
-        
-        CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
-            scope: this,
-            success: function(snapshots) {
-                this.logger.log('snapshots:', snapshots.length);
-                
-                if ( snapshots.length === 0 ) {
-                    deferred.reject({msg: 'No initiatives meet the filters.'});
-                    return;
-                }
-                
-                var valid_items = {};
-                Ext.Array.map(snapshots, function(snapshot){
-                    valid_items[snapshot.get('ObjectID')] = snapshot;
-                });
-                
-                var valid_initiatives = Ext.Array.filter(initiatives, function(initiative){
-                    var oid = initiative.get('ObjectID');
-                    return !Ext.isEmpty(valid_items[oid]);
-                });
-                
-                this.logger.log('found valid initiatives with stories:', valid_initiatives.length);
-                
-                deferred.resolve( valid_initiatives );
-            },
-            failure: function(msg) {
-                deferred.reject(msg);
-            }
-        });
-        return deferred.promise;
-    },
     
     _fetchAlreadyEnteredDataForMonth: function(month_start,key_prefix) {
         this.logger.log('_fetchAlreadyEnteredDataForMonth', month_start, key_prefix);
@@ -1680,6 +1704,7 @@ Ext.define("TSInitiativePercentageView", {
             filters: [
                 {property:'Name',operator:'contains',value: key_prefix + "." + month_start}
             ],
+            pageSize: 2000,
             context: { project: null }
         };
         
