@@ -1,0 +1,13 @@
+{
+    "name": "TS Defect Leakage Report",
+    "sdk": "2.1",
+    "className": "tsDefectLeakage",
+    "story": "F166",
+    "javascript": [
+        "src/javascript/utils/__ts-info-link.js",
+        "src/javascript/utils/__ts-logger.js",
+        "../common/src/javascript/wsapi-utilities.js",
+        "../common/src/javascript/colors.js",
+        "src/javascript/app.js"
+    ]
+}
