@@ -169,7 +169,6 @@ Ext.define('CA.agile.technicalservices.util.WsapiUtils',{
     
     fetchAllowedValues: function(model_name, field_name) {
         var deferred = Ext.create('Deft.Deferred');
-        console.log(model_name, field_name);
         
         Rally.data.ModelFactory.getModel({
             type: model_name,
