@@ -525,7 +525,11 @@ Ext.define("TSInitiativePercentageEntry", {
     },
     
     getSettingsFields: function() {
-        var type_path = this.PortfolioItemTypes[1].get('TypePath');
+        var type_path = "PortfolioItem/Initiative";
+        if ( this.PortfolioItemTypes && this.PortfolioItemTypes.length > 1) {
+            type_path = this.PortfolioItemTypes[1].get('TypePath');
+        }
+        
         
         return [
             { 
@@ -548,34 +552,6 @@ Ext.define("TSInitiativePercentageEntry", {
                 model: type_path,
                 fieldLabel: 'Initiative Field Matched During the Month:'
             }
-//            {
-//                xtype: 'textarea',
-//                fieldLabel: 'Query',
-//                labelAlign: 'right',
-//                name: 'query',
-//                anchor: '100%',
-//                cls: 'query-field',
-//                margin: '25 70 0 0',
-//                plugins: [
-//                    {
-//                        ptype: 'rallyhelpfield',
-//                        helpId: 194
-//                    },
-//                    'rallyfieldvalidationui'
-//                ],
-//                validateOnBlur: false,
-//                validateOnChange: false,
-//                validator: function(value) {
-//                    try {
-//                        if (value) {
-//                            Rally.data.wsapi.Filter.fromQueryString(value);
-//                        }
-//                        return true;
-//                    } catch (e) {
-//                        return e.message;
-//                    }
-//                }
-//            }
         ];
     },
     
