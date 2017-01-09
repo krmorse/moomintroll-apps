@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Dec 23 2016 11:40:33 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Jan 09 2017 13:46:03 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Dec 23 2016 11:40:33 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Jan 09 2017 13:46:03 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 74912478414;
+        var CHECKSUM = 76626395183;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -192,7 +192,6 @@ Ext.define('CA.agile.technicalservices.util.WsapiUtils',{
     
     fetchAllowedValues: function(model_name, field_name) {
         var deferred = Ext.create('Deft.Deferred');
-        console.log(model_name, field_name);
         
         Rally.data.ModelFactory.getModel({
             type: model_name,
@@ -794,6 +793,16 @@ Ext.define('TSDateCalculator',{
     }
 
 });
+Ext.override(Rally.ui.grid.plugin.TreeGridChildPager,{
+
+    _storeHasMoreChildPages: function(parentRecord) {
+        return false;
+//        var loadedCount = this._getLoadedCount(parentRecord);
+//        return parentRecord.get('leafCount') > loadedCount;
+    }
+
+});
+
 Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
     extend: 'Rally.ui.dialog.Dialog',
     alias: 'widget.projecttreepickerdialog',
@@ -841,6 +850,9 @@ Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
         root_filters: [{
                 property: 'Parent',
                 value: ""
+        },{
+            property:'State',
+            value:'Open'
         }],
 
         /**
@@ -1039,7 +1051,33 @@ Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
             autoLoad: true,
             enableHierarchy: true,
             filters: me.root_filters,
-            sorters: [{property:'Name'}]
+            sorters: [{property:'Name'}],
+            _getChildNodeFilters: function(node) {
+                var parentType = node.self.typePath,
+                    childTypes = this._getChildTypePaths([parentType]),
+                    parentFieldNames = this._getParentFieldNames(childTypes, parentType);
+
+                if (parentFieldNames.length) {
+                    var open_filter = Ext.create('Rally.data.wsapi.Filter',{
+                        property:'State',
+                        value:'Open'
+                    });
+                    
+                    var base_filters = Rally.data.wsapi.Filter.or(_.map(parentFieldNames, function(parentFieldName) {
+                        return {
+                            property: parentFieldName,
+                            operator: '=',
+                            value: node.get('_ref')
+                        };
+                    }));
+                    
+                    return [
+                        open_filter.and(base_filters)
+                    ];
+                }
+
+                return [];
+            }
         }).then({
             scope: this,
             success: function(store) {
@@ -1981,7 +2019,11 @@ Ext.define("TSInitiativePercentageEntry", {
     },
     
     getSettingsFields: function() {
-        var type_path = this.PortfolioItemTypes[1].get('TypePath');
+        var type_path = "PortfolioItem/Initiative";
+        if ( this.PortfolioItemTypes && this.PortfolioItemTypes.length > 1) {
+            type_path = this.PortfolioItemTypes[1].get('TypePath');
+        }
+        
         
         return [
             { 
@@ -2004,34 +2046,6 @@ Ext.define("TSInitiativePercentageEntry", {
                 model: type_path,
                 fieldLabel: 'Initiative Field Matched During the Month:'
             }
-//            {
-//                xtype: 'textarea',
-//                fieldLabel: 'Query',
-//                labelAlign: 'right',
-//                name: 'query',
-//                anchor: '100%',
-//                cls: 'query-field',
-//                margin: '25 70 0 0',
-//                plugins: [
-//                    {
-//                        ptype: 'rallyhelpfield',
-//                        helpId: 194
-//                    },
-//                    'rallyfieldvalidationui'
-//                ],
-//                validateOnBlur: false,
-//                validateOnChange: false,
-//                validator: function(value) {
-//                    try {
-//                        if (value) {
-//                            Rally.data.wsapi.Filter.fromQueryString(value);
-//                        }
-//                        return true;
-//                    } catch (e) {
-//                        return e.message;
-//                    }
-//                }
-//            }
         ];
     },
     

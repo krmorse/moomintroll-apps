@@ -1,3 +1,13 @@
+Ext.override(Rally.ui.grid.plugin.TreeGridChildPager,{
+
+    _storeHasMoreChildPages: function(parentRecord) {
+        return false;
+//        var loadedCount = this._getLoadedCount(parentRecord);
+//        return parentRecord.get('leafCount') > loadedCount;
+    }
+
+});
+
 Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
     extend: 'Rally.ui.dialog.Dialog',
     alias: 'widget.projecttreepickerdialog',
@@ -45,6 +55,9 @@ Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
         root_filters: [{
                 property: 'Parent',
                 value: ""
+        },{
+            property:'State',
+            value:'Open'
         }],
 
         /**
@@ -243,7 +256,33 @@ Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
             autoLoad: true,
             enableHierarchy: true,
             filters: me.root_filters,
-            sorters: [{property:'Name'}]
+            sorters: [{property:'Name'}],
+            _getChildNodeFilters: function(node) {
+                var parentType = node.self.typePath,
+                    childTypes = this._getChildTypePaths([parentType]),
+                    parentFieldNames = this._getParentFieldNames(childTypes, parentType);
+
+                if (parentFieldNames.length) {
+                    var open_filter = Ext.create('Rally.data.wsapi.Filter',{
+                        property:'State',
+                        value:'Open'
+                    });
+                    
+                    var base_filters = Rally.data.wsapi.Filter.or(_.map(parentFieldNames, function(parentFieldName) {
+                        return {
+                            property: parentFieldName,
+                            operator: '=',
+                            value: node.get('_ref')
+                        };
+                    }));
+                    
+                    return [
+                        open_filter.and(base_filters)
+                    ];
+                }
+
+                return [];
+            }
         }).then({
             scope: this,
             success: function(store) {
