@@ -288,42 +288,36 @@ Ext.define("TSInitiativePercentageView", {
         //
         var active_states = ['Defined','In-Progress','Completed'];
         var valid_types = [null,'Standard'];
-        var initiative_oids = Ext.Array.map(initiative_snapshots, function(snap){ return snap.get('ObjectID'); });
+        var initiative_oids = Ext.Array.map(initiative_snapshots || [], function(snap){ return snap.get('ObjectID'); });
+        
+        this.logger.log('initiative count', initiative_oids.length);
         
         var config = {
             find: {
                 "_ItemHierarchy": { "$in": initiative_oids },
                 _TypeHierarchy: { "$in": ['HierarchicalRequirement'] },
                 "Children": null,
-                "ScheduleState": { "$in":  active_states},
                 "c_StoryType": { "$in": valid_types },
-                
+                "ScheduleState": { "$in":  active_states },
                 "$or": [
                     {
                         "_PreviousValues.ScheduleState": { "$exists": true },
                         "_ValidFrom": {
-                            "$gte": month_start,
                             "$lt":  next_month
+                        },
+                        "_ValidTo": { 
+                            "$gt": month_start
                         }
                     },
-    // can change project, too!
-                    {
-                        ScheduleState: { "$in":  active_states},
-                        "_PreviousValues.Project": { "$exists": true },
-                        "_ValidFrom": {
-                            "$gte": month_start,
-                            "$lt":  next_month
-                        }
+                    { 
+                        "__At": next_month
                     },
                     {
-                        __At: month_start
-                    },
-                    {
-                        __At: next_month
+                        "__At": month_start
                     }
                 ]
             },
-            fetch: ['ObjectID','_ItemHierarchy','Project'],
+            fetch: ['ObjectID','_ItemHierarchy','Project','_ValidTo','_ValidFrom','AcceptedDate','InProgressDate'],
             hydrate: ['Project'],
             useHttpPost: true,
             limit: Infinity
