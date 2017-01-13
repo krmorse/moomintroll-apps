@@ -3,13 +3,13 @@
 <head>
     <title>Questionaire</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jan 12 2017 16:55:13 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Jan 12 2017 17:27:07 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jan 12 2017 16:55:13 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Jan 12 2017 17:27:07 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 96896483404;
+        var CHECKSUM = 97795983364;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -859,9 +859,15 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         this.doLayout();
     },
     deleteSection: function(btn){
+        console.log('--delete', btn);
+        
         var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
+        console.log('--id', sectionId);
+        
         if (sectionId){
-            delete this.surveyPanelCfg.getPanel(sectionId);
+            console.log(this.surveyPanelCfg);
+            
+            this.surveyPanelCfg.removePanel(sectionId);
         }
         this.refreshSurvey();
     },
@@ -881,6 +887,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             type: 'choice',
             text: '',
             id: sectionId,
+            itemId: sectionId,
             options: []
         });
         this.refreshSurvey();
@@ -1065,13 +1072,11 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
         Rally.data.PreferenceManager.load({
             appID: this.getAppId(),
             success: function(prefs) {
-                console.log('prefs', prefs);
                 if (prefs.panels){
                     this.panels = Ext.JSON.decode(prefs.panels);
                 } else {
                     this.panels = {};
                 }
-                console.log('prefs', this.panels);
                 this.fireEvent('ready', this);
             },
             scope: this
@@ -1086,7 +1091,6 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
         Ext.Object.each(this.panels, function(panel){
             panel.value = '';
         });
-
 
         var panelSetting = Ext.JSON.encode(this.panels);
         Rally.data.PreferenceManager.update({
@@ -1119,6 +1123,17 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
     setPanel: function(panelId, panelCfg){
         this.panels[panelId] = panelCfg;
     },
+    removePanel: function(panelId){
+        var panel = this.getPanel(panelId);
+        if ( !panel ) {
+            console.log('Cannot find panel with id:', panelId);
+            return;
+        }
+        
+        delete this.panels[panelId];
+        return;
+    },
+    
     /**
      * panels:
      *     hash of objects representing a panel in the survey

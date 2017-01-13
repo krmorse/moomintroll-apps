@@ -379,9 +379,15 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         this.doLayout();
     },
     deleteSection: function(btn){
+        console.log('--delete', btn);
+        
         var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
+        console.log('--id', sectionId);
+        
         if (sectionId){
-            delete this.surveyPanelCfg.getPanel(sectionId);
+            console.log(this.surveyPanelCfg);
+            
+            this.surveyPanelCfg.removePanel(sectionId);
         }
         this.refreshSurvey();
     },
@@ -401,6 +407,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             type: 'choice',
             text: '',
             id: sectionId,
+            itemId: sectionId,
             options: []
         });
         this.refreshSurvey();
