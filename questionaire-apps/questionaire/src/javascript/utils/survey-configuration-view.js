@@ -457,8 +457,25 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             this.refreshSection(sectionId);
         }
     },
+    
+    _getEditorFromFieldDef: function(fieldDef){
+        
+        if ( fieldDef.editor  && fieldDef.editor.xtype != "rallyrecordcontexteditor" ) { return fieldDef.editor; }
+        
+        var editor = { xtype:'rallytextfield' };
+        
+        if ( fieldDef.attributeDefinition.Constrained && fieldDef.custom ) {
+            editor = {
+                xtype: 'rallyfieldvaluecombobox',
+                model: 'PortfolioItem',
+                field: fieldDef.name
+            };
+        }
+        
+        return editor;
+    },
+    
     updateFieldValueOptions: function(cb){
-
         var info = cb.itemId.split(this.sectionFieldSuffix);
         var sectionId = info[0],
             idx = info[1],
@@ -473,9 +490,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         console.log('updateFieldValueOptions', fieldDef, value, containerId);
         var cfg = null;
         if (fieldDef && fieldDef.attributeDefinition){
-            cfg = fieldDef.editor || {
-                    xtype: 'rallytextfield'
-                };
+            cfg = this._getEditorFromFieldDef(fieldDef);
             cfg.itemId = valueItemId;
             cfg.fieldLabel = 'Set to Value';
             cfg.labelAlign = 'right';

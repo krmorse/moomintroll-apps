@@ -3,13 +3,13 @@
 <head>
     <title>Questionaire</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jan 12 2017 18:09:58 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Jan 12 2017 18:30:43 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jan 12 2017 18:09:58 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Jan 12 2017 18:30:43 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 100477791612;
+        var CHECKSUM = 101933041213;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -937,8 +937,25 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             this.refreshSection(sectionId);
         }
     },
+    
+    _getEditorFromFieldDef: function(fieldDef){
+        
+        if ( fieldDef.editor  && fieldDef.editor.xtype != "rallyrecordcontexteditor" ) { return fieldDef.editor; }
+        
+        var editor = { xtype:'rallytextfield' };
+        
+        if ( fieldDef.attributeDefinition.Constrained && fieldDef.custom ) {
+            editor = {
+                xtype: 'rallyfieldvaluecombobox',
+                model: 'PortfolioItem',
+                field: fieldDef.name
+            };
+        }
+        
+        return editor;
+    },
+    
     updateFieldValueOptions: function(cb){
-
         var info = cb.itemId.split(this.sectionFieldSuffix);
         var sectionId = info[0],
             idx = info[1],
@@ -953,9 +970,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         console.log('updateFieldValueOptions', fieldDef, value, containerId);
         var cfg = null;
         if (fieldDef && fieldDef.attributeDefinition){
-            cfg = fieldDef.editor || {
-                    xtype: 'rallytextfield'
-                };
+            cfg = this._getEditorFromFieldDef(fieldDef);
             cfg.itemId = valueItemId;
             cfg.fieldLabel = 'Set to Value';
             cfg.labelAlign = 'right';
