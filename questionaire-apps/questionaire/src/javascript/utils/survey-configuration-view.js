@@ -1,3 +1,9 @@
+Ext.override(Ext.form.field.Base,{
+    onDirtyChange: function(isDirty) {
+        // make empty so that removing radio buttons before the class is updated doesn't throw an error
+    }
+});
+
 Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     extend: 'Ext.panel.Panel',
     alias: 'widget.surveyconfigurationview',
@@ -52,6 +58,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         return Ext.Object.getKeys(this.surveyPanelCfg.getPanels());
     },
     _getAddNewSection: function(){
+        var me = this;
+        
         return {
             title: '<div class="add-new-section">Add a New Section...</div>',
             layout: 'hbox',
@@ -65,11 +73,18 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
                 maxLength: 25,
                 width: 300,
                 margin: 10,
-                height: 35
+                height: 35,
+                validator: function(value) { return me._validateSectionId(value,me); },
+                listeners: {
+                    scope: this,
+                    change: this._enableSectionButton
+                }
             },{
                 xtype:'rallybutton',
+                itemId: 'addSectionButton',
                 text: 'Add Section',
                 margin: '25 10 10 10',
+                disabled: true,
                 handler: this.addSection,
                 scope: this
             }],
@@ -80,10 +95,13 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
             type = sectionConfig.type;
 
+        console.log('_getSection',idx);
+        
         return {
             title: title,
             flex: 1,
             items: this._getSectionItems(sectionConfig, idx),
+            titleCollapse: false,
             itemId: sectionConfig.id,
             collapsed: sectionConfig.id !== 'root',
             listeners: {
@@ -126,6 +144,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             columns: 4,
             width: '90%',
             margin: 10,
+
             items: [
                 { boxLabel: 'Multiple Choice', name: sectionConfig.id + '-questionType', inputValue: 'choice', checked: type == 'choice' },
                 { boxLabel: 'Text Entry Field', name: sectionConfig.id + '-questionType', inputValue: 'text', checked: type == 'text'}
@@ -344,7 +363,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
     },
     refreshSection: function(sectionId){
-
+        console.log('refreshSection', sectionId);
         var sectionCmp = this.down('#' + sectionId);
         if (sectionCmp){
             this.applySurveySettings(sectionId);
@@ -355,6 +374,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
     },
     applySurveySettings: function(sectionId, section){
+        console.log('applySurveySettings', sectionId);
+        
         if (!section){
             section = this.surveyPanelCfg.getPanel(sectionId);
         }
@@ -362,7 +383,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         //section.type = this.getSectionType(sectionId);
         //section.text = this.getSectionText(sectionId);
 
-        console.log('section.type', section.type);
+        console.trace('section.type', section.type);
         if (section.type === 'choice'){
             section.options = this.getSectionOptions(sectionId);
         } else {
@@ -381,7 +402,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     deleteSection: function(btn){
         var sectionId = btn.itemId.replace(this.deleteSectionSuffix,'');
         if (sectionId){
-            delete this.surveyPanelCfg.getPanel(sectionId);
+            this.surveyPanelCfg.removePanel(sectionId);
         }
         this.refreshSurvey();
     },
@@ -401,13 +422,48 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             type: 'choice',
             text: '',
             id: sectionId,
+            itemId: sectionId,
             options: []
         });
         this.refreshSurvey();
     },
+    
+    _validateSectionId: function(value,me) {
+        if ( /\s/.test(value) ) {
+            return "Section ID cannot contain spaces.";
+        }
+        
+        if ( /\W/.test(value) ) {
+            return "Section ID must contain only letters, numbers and/or underscores";
+        }
+        
+        if (Ext.Array.contains(me._getSectionKeys(), value)){
+            return 'Section ID must be unique.';
+        }
+        
+        if ( Ext.isEmpty(value) ) {
+            return "Section ID cannot be blank.";
+        }
+        return true;
+    },
+    
+    _enableSectionButton: function(field) {
+        var button = this.down('#addSectionButton');
+        
+        if ( Ext.isEmpty(button) ) { return ; }
+        
+        if ( field.isValid() ) {
+            button.setDisabled(false);
+            return;
+        }
+        button.setDisabled(true);
+    },
+    
     changeType: function(group, newValue){
         var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
-
+        
+        group.suspendEvents();
+        
         var name = sectionId + '-questionType';
         if (newValue && newValue[name]){
             this.surveyPanelCfg.getPanel(sectionId).type = newValue[name];
@@ -415,8 +471,25 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             this.refreshSection(sectionId);
         }
     },
+    
+    _getEditorFromFieldDef: function(fieldDef){
+        
+        if ( fieldDef.editor  && fieldDef.editor.xtype != "rallyrecordcontexteditor" ) { return fieldDef.editor; }
+        
+        var editor = { xtype:'rallytextfield' };
+        
+        if ( fieldDef.attributeDefinition.Constrained && fieldDef.custom ) {
+            editor = {
+                xtype: 'rallyfieldvaluecombobox',
+                model: 'PortfolioItem',
+                field: fieldDef.name
+            };
+        }
+        
+        return editor;
+    },
+    
     updateFieldValueOptions: function(cb){
-
         var info = cb.itemId.split(this.sectionFieldSuffix);
         var sectionId = info[0],
             idx = info[1],
@@ -431,9 +504,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         console.log('updateFieldValueOptions', fieldDef, value, containerId);
         var cfg = null;
         if (fieldDef && fieldDef.attributeDefinition){
-            cfg = fieldDef.editor || {
-                    xtype: 'rallytextfield'
-                };
+            cfg = this._getEditorFromFieldDef(fieldDef);
             cfg.itemId = valueItemId;
             cfg.fieldLabel = 'Set to Value';
             cfg.labelAlign = 'right';

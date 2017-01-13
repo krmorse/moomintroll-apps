@@ -25,13 +25,11 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
         Rally.data.PreferenceManager.load({
             appID: this.getAppId(),
             success: function(prefs) {
-                console.log('prefs', prefs);
                 if (prefs.panels){
                     this.panels = Ext.JSON.decode(prefs.panels);
                 } else {
                     this.panels = {};
                 }
-                console.log('prefs', this.panels);
                 this.fireEvent('ready', this);
             },
             scope: this
@@ -46,7 +44,6 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
         Ext.Object.each(this.panels, function(panel){
             panel.value = '';
         });
-
 
         var panelSetting = Ext.JSON.encode(this.panels);
         Rally.data.PreferenceManager.update({
@@ -79,6 +76,17 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
     setPanel: function(panelId, panelCfg){
         this.panels[panelId] = panelCfg;
     },
+    removePanel: function(panelId){
+        var panel = this.getPanel(panelId);
+        if ( !panel ) {
+            console.log('Cannot find panel with id:', panelId);
+            return;
+        }
+        
+        delete this.panels[panelId];
+        return;
+    },
+    
     /**
      * panels:
      *     hash of objects representing a panel in the survey

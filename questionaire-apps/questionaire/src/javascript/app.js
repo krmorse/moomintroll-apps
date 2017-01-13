@@ -2,6 +2,8 @@ Ext.define("questionaire", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
+    padding: 10,
+    
     defaults: { margin: 10 },
 
     integrationHeaders : {
@@ -59,13 +61,13 @@ Ext.define("questionaire", {
 
         this.removeAll();
 
-        this.add({
-            xtype: 'rallybutton',
-            text: 'Save',
-            width: 100,
-            handler: this.saveConfiguration,
-            scope: this
-        });
+//        this.add({
+//            xtype: 'rallybutton',
+//            text: 'Save',
+//            width: 100,
+//            handler: this.saveConfiguration,
+//            scope: this
+//        });
 
         this.add({
             xtype: 'rallybutton',
@@ -87,7 +89,8 @@ Ext.define("questionaire", {
         this.launchSurveyMode(true, adminPanel.getSurveyConfig());
     },
     saveConfiguration: function(surveyConfig){
-        if (!surveyConfig){
+        
+        if (!surveyConfig || surveyConfig.xtype == "rallybutton" ){
             var adminPanel = this.down('surveyconfigurationview');
             surveyConfig = adminPanel.getSurveyConfig();
         }
