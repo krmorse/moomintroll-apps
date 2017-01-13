@@ -1,3 +1,9 @@
+Ext.override(Ext.form.field.Base,{
+    onDirtyChange: function(isDirty) {
+        // make empty so that removing radio buttons before the class is updated doesn't throw an error
+    },
+});
+
 Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     extend: 'Ext.panel.Panel',
     alias: 'widget.surveyconfigurationview',
@@ -89,6 +95,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
             type = sectionConfig.type;
 
+        console.log('_getSection',idx);
+        
         return {
             title: title,
             flex: 1,
@@ -135,6 +143,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             columns: 4,
             width: '90%',
             margin: 10,
+
             items: [
                 { boxLabel: 'Multiple Choice', name: sectionConfig.id + '-questionType', inputValue: 'choice', checked: type == 'choice' },
                 { boxLabel: 'Text Entry Field', name: sectionConfig.id + '-questionType', inputValue: 'text', checked: type == 'text'}
@@ -449,7 +458,9 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     
     changeType: function(group, newValue){
         var sectionId = group.itemId.replace(this.sectionTypeSuffix,'');
-
+        
+        group.suspendEvents();
+        
         var name = sectionId + '-questionType';
         if (newValue && newValue[name]){
             this.surveyPanelCfg.getPanel(sectionId).type = newValue[name];
