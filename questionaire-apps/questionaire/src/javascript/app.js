@@ -2,6 +2,8 @@ Ext.define("questionaire", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
+    padding: 10,
+    
     defaults: { margin: 10 },
 
     integrationHeaders : {

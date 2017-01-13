@@ -1,7 +1,7 @@
 Ext.override(Ext.form.field.Base,{
     onDirtyChange: function(isDirty) {
         // make empty so that removing radio buttons before the class is updated doesn't throw an error
-    },
+    }
 });
 
 Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
@@ -101,6 +101,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
             title: title,
             flex: 1,
             items: this._getSectionItems(sectionConfig, idx),
+            titleCollapse: false,
             itemId: sectionConfig.id,
             collapsed: sectionConfig.id !== 'root',
             listeners: {
@@ -362,7 +363,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
     },
     refreshSection: function(sectionId){
-
+        console.log('refreshSection', sectionId);
         var sectionCmp = this.down('#' + sectionId);
         if (sectionCmp){
             this.applySurveySettings(sectionId);
@@ -373,6 +374,8 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         }
     },
     applySurveySettings: function(sectionId, section){
+        console.log('applySurveySettings', sectionId);
+        
         if (!section){
             section = this.surveyPanelCfg.getPanel(sectionId);
         }
@@ -380,7 +383,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
         //section.type = this.getSectionType(sectionId);
         //section.text = this.getSectionText(sectionId);
 
-        console.log('section.type', section.type);
+        console.trace('section.type', section.type);
         if (section.type === 'choice'){
             section.options = this.getSectionOptions(sectionId);
         } else {
