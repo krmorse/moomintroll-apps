@@ -34,7 +34,7 @@ Ext.define("questionaire", {
             return;
         }
 
-        var surveyConfig = Ext.create('CA.agile.technicalservices.SurveyConfiguration',{
+        var config = {
             surveyTitle: this.getSurveyTitle(),
             surveyType: this.getSurveyType() ,
             listeners: {
@@ -43,8 +43,16 @@ Ext.define("questionaire", {
                 initerror: this.showErrorNotification,
                 surveysaved: this.showSuccess
             }
-        });
+        };
+        
+        var setting_filter = this.getSetting('queryFilter');
+        this.logger.log("Setting Filter: ", setting_filter);
 
+        if ( ! Ext.isEmpty(setting_filter)) {
+            setting_filter = setting_filter.replace(/\{user\}/,this.getContext().getUser()._ref);
+            config.filters = Rally.data.wsapi.Filter.fromQueryString(setting_filter);
+        }
+        var surveyConfig = Ext.create('CA.agile.technicalservices.SurveyConfiguration',config);
     },
     launchApp: function(surveyConfig){
         var appMode = this.getAppMode();
@@ -149,7 +157,15 @@ Ext.define("questionaire", {
             storeConfig: {
                 model: this.surveyDriver.getModel(),
                 fetch: this.surveyDriver.getFetch(),
-                filters: this.surveyDriver.getFilters()
+                filters: this.surveyDriver.getFilters(),
+                listeners: {
+                    scope: this,
+                    load: function(store,records,successful) {
+                        if ( !successful ) { 
+                            this.showErrorNotification('Problem loading records.  Please check query.');
+                        }
+                    }
+                }
             },
             columnCfgs: this.surveyDriver.getFetch(),
             height: 450
@@ -324,8 +340,8 @@ Ext.define("questionaire", {
                 },
                 'rallyfieldvalidationui'
             ],
-            validateOnBlur: false,
-            validateOnChange: false,
+            validateOnBlur: true,
+            validateOnChange: true,
             validator: function(value) {
                 try {
                     if (value) {

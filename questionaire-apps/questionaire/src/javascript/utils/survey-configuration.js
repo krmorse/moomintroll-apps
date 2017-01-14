@@ -15,6 +15,8 @@ Ext.define('CA.agile.technicalservices.SurveyConfiguration',{
 
     startContainer: 'root',
 
+    filters: null,
+    
     constructor: function (config) {
 
         this.mixins.observable.constructor.call(this, config);
