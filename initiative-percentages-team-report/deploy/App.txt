@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage View</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jan 10 2017 11:01:09 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Jan 17 2017 18:27:35 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jan 10 2017 11:01:09 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Jan 17 2017 18:27:35 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 87397576545;
+        var CHECKSUM = 87840323265;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -681,14 +681,16 @@ Ext.define('CA.technicalservices.FieldValuePickerDialog', {
             width: 175,
             margin: 10,
             _isNotHidden: function(field) {
-                if ( field.hidden ) { return false; }
+                //if ( field.hidden ) { return false; }
 
                 var attribute_definition = field.attributeDefinition;
                 if ( Ext.isEmpty(attribute_definition) ) { return false; }
                 
                 if ( attribute_definition.AttributeType == "BOOLEAN" ) { return true; }
+                if ( attribute_definition.AttributeType == "RATING" )  { return true; }
                 if ( attribute_definition.AttributeType == "STRING" && attribute_definition.Constrained == true ) { return true; }
                 
+                console.log(field.name, attribute_definition);
                 return false;
             },
             
