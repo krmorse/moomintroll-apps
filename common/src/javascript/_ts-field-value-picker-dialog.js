@@ -92,14 +92,16 @@ Ext.define('CA.technicalservices.FieldValuePickerDialog', {
             width: 175,
             margin: 10,
             _isNotHidden: function(field) {
-                if ( field.hidden ) { return false; }
+                //if ( field.hidden ) { return false; }
 
                 var attribute_definition = field.attributeDefinition;
                 if ( Ext.isEmpty(attribute_definition) ) { return false; }
                 
                 if ( attribute_definition.AttributeType == "BOOLEAN" ) { return true; }
+                if ( attribute_definition.AttributeType == "RATING" )  { return true; }
                 if ( attribute_definition.AttributeType == "STRING" && attribute_definition.Constrained == true ) { return true; }
                 
+                console.log(field.name, attribute_definition);
                 return false;
             },
             

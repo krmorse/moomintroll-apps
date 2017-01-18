@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Mon Jan 09 2017 13:46:03 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Jan 17 2017 18:20:14 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Jan 09 2017 13:46:03 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Jan 17 2017 18:20:14 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 76626395183;
+        var CHECKSUM = 77041707344;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -683,14 +683,16 @@ Ext.define('CA.technicalservices.FieldValuePickerDialog', {
             width: 175,
             margin: 10,
             _isNotHidden: function(field) {
-                if ( field.hidden ) { return false; }
+                //if ( field.hidden ) { return false; }
 
                 var attribute_definition = field.attributeDefinition;
                 if ( Ext.isEmpty(attribute_definition) ) { return false; }
                 
                 if ( attribute_definition.AttributeType == "BOOLEAN" ) { return true; }
+                if ( attribute_definition.AttributeType == "RATING" )  { return true; }
                 if ( attribute_definition.AttributeType == "STRING" && attribute_definition.Constrained == true ) { return true; }
                 
+                console.log(field.name, attribute_definition);
                 return false;
             },
             
