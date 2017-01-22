@@ -9,9 +9,11 @@ Ext.define("TSInitiativePercentageEntry", {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
+    layout: 'border',
+    
     items: [
-        {xtype:'container',itemId:'selector_box',layout: 'hbox', defaults: { margin: 10 }},
-        {xtype:'container',itemId:'display_box'}
+        {xtype:'container',itemId:'selector_box',region:'north',layout: 'hbox', defaults: { margin: 10 }},
+        {xtype:'container',itemId:'display_box',region: 'center', layout:'fit'}
     ],
 
     integrationHeaders : {
@@ -28,7 +30,8 @@ Ext.define("TSInitiativePercentageEntry", {
     
     launch: function() {
         var me = this;
-        console.log('Starting with: ', this.getSettings());
+        this.logger.log('Starting with: ', this.getSettings());
+        this.logger.log('App ID (also Panel OID):', this.getAppId());
         
         var before = this.getSetting('validBeforeMonthEnd'),
             after  = this.getSetting('validAfterMonthEnd');
@@ -479,6 +482,10 @@ Ext.define("TSInitiativePercentageEntry", {
                     });
                 },
                 summaryType: 'sum',
+                summaryRenderer: function(value, summaryData, dataIndex) {
+                    if ( value === 0 ) { return; }
+                    return Ext.String.format('TOTAL: {0}%', value); 
+                },
                 renderer: function(value,meta,record) {
                     if ( value === 0 ) {
                         return "";

@@ -25,5 +25,5 @@
 
 .x-grid-row-summary .x-grid-cell{
     border-style: solid;
-    border-top: thick double #000;
+    border-top: thick single #000;
 }
