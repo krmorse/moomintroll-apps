@@ -487,9 +487,10 @@ Ext.define("TSInitiativePercentageEntry", {
                     return Ext.String.format('TOTAL: {0}%', value); 
                 },
                 renderer: function(value,meta,record) {
-                    if ( value === 0 ) {
+                    console.log('value', value);
+                    if ( value === null || isNaN(value)) {
                         return "";
-                    } 
+                    }
                     return value + '%';
                 }
             }

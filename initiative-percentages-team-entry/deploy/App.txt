@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sat Jan 21 2017 16:35:05 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Jan 31 2017 19:52:19 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Jan 21 2017 16:35:05 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Jan 31 2017 19:52:19 GMT-0700 (MST)";
         var STORY    = "F166";
-        var BUILDER  = "jmartin";
-        var CHECKSUM = 77944391255;
+        var BUILDER  = "kcorkan";
+        var CHECKSUM = 78354888876;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1403,10 +1403,11 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', defaultValue: 0 },
+        { name: '__percentage', type: 'float', defaultValue: undefined},
         { name: 'Project', type:'object' },
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }
+           // console.log('pref.get(Value)',pref.get('Value'));
             var value = Ext.JSON.decode(pref.get('Value'));
             record.set('__lastChangedBy',value.__lastChangedBy);
             record.set('__lastChangedOn', value.__lastChangedOn);
@@ -1487,7 +1488,7 @@ Ext.define('TSModel',{
                 var pref = Ext.create(model,config);
                 pref.save({
                     callback: function(result, operation) {
-                        me.set('__pref', result[0]);
+                        me.set('__pref', result.getData());
                     }
                 });
             }
@@ -1983,9 +1984,10 @@ Ext.define("TSInitiativePercentageEntry", {
                     return Ext.String.format('TOTAL: {0}%', value); 
                 },
                 renderer: function(value,meta,record) {
-                    if ( value === 0 ) {
+                    console.log('value', value);
+                    if ( value === null || isNaN(value)) {
                         return "";
-                    } 
+                    }
                     return value + '%';
                 }
             }
