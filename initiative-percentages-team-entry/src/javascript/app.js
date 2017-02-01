@@ -447,6 +447,7 @@ Ext.define("TSInitiativePercentageEntry", {
                             disabled: false,
                             allowDecimals: false,
                             selectOnFocus: true,
+                            allowBlank: true,
                             validator: function(value) {
                                 value = value || 0;
                                 
@@ -493,7 +494,6 @@ Ext.define("TSInitiativePercentageEntry", {
                     return Ext.String.format('TOTAL: {0}%', value); 
                 },
                 renderer: function(value,meta,record) {
-                    console.log('value', value);
                     if ( value === null || isNaN(value)) {
                         return "";
                     }

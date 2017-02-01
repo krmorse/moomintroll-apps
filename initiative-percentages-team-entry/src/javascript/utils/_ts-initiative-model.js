@@ -8,7 +8,7 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', defaultValue: undefined},
+        { name: '__percentage', type: 'float', useNull: true, defaultValue: undefined},
         { name: 'Project', type:'object' },
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }

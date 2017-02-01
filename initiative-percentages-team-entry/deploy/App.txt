@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jan 31 2017 19:39:25 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Jan 31 2017 19:46:20 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jan 31 2017 19:39:25 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Jan 31 2017 19:46:20 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 78839707362;
+        var CHECKSUM = 78782253673;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1403,7 +1403,7 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', defaultValue: undefined},
+        { name: '__percentage', type: 'float', useNull: true, defaultValue: undefined},
         { name: 'Project', type:'object' },
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }
@@ -1944,6 +1944,7 @@ Ext.define("TSInitiativePercentageEntry", {
                             disabled: false,
                             allowDecimals: false,
                             selectOnFocus: true,
+                            allowBlank: true,
                             validator: function(value) {
                                 value = value || 0;
                                 
@@ -1982,7 +1983,6 @@ Ext.define("TSInitiativePercentageEntry", {
                     var total = 0;
                     Ext.Array.each(values, function(value){
                         total += value.get('__percentage') || 0;
-                        console.log(value);
                     });
                     return total;
                 },
@@ -1991,7 +1991,6 @@ Ext.define("TSInitiativePercentageEntry", {
                     return Ext.String.format('TOTAL: {0}%', value); 
                 },
                 renderer: function(value,meta,record) {
-                    console.log('value', value);
                     if ( value === null || isNaN(value)) {
                         return "";
                     }
