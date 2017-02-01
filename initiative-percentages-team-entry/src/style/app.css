@@ -27,3 +27,7 @@
     border-style: solid;
     border-top: thick single #000;
 }
+
+.x-border-layout-ct {
+    background-color: white;
+}

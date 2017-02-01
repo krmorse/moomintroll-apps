@@ -8,21 +8,45 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', useNull: true, defaultValue: undefined},
         { name: 'Project', type:'object' },
-        { name: '__pref', type: 'object', convert: function(pref,record) {
-            if ( Ext.isEmpty(pref) ) { return; }
-           // console.log('pref.get(Value)',pref.get('Value'));
-            var value = Ext.JSON.decode(pref.get('Value'));
-            record.set('__lastChangedBy',value.__lastChangedBy);
-            record.set('__lastChangedOn', value.__lastChangedOn);
-            record.set('__percentage', value.__percentage);
-            return pref;
+        { name: '__pref', type: 'object', defaultValue: undefined},
+
+        { name: '__percentage', type: 'float', useNull: true, defaultValue: undefined, convert: function(value,record){
+            // if value is passed directly, just take it
+            if ( !Ext.isEmpty(value) || value === 0 ) { return value; }
+            
+            // if we've already created the record fully, and we get here it means someone
+            // is blanking it out in the grid  (convert functions are run in order)
+            if ( record.get('__instantiated') ) { return undefined; }
+            
+            var pref = record.get('__pref');
+
+            if ( Ext.isEmpty(pref) ) { return undefined; }
+            var pref_value = Ext.JSON.decode(pref.get('Value'));
+            return pref_value.__percentage;
+        } },
+
+        { name: '__lastChangedBy', type: 'object', convert: function(value,record){
+            // if value is passed directly, just take it
+            if ( !Ext.isEmpty(value) ) { return value; }
+            var pref = record.get('__pref');
+
+            if ( Ext.isEmpty(pref) ) { return null; }
+            var pref_value = Ext.JSON.decode(pref.get('Value'));
+            return pref_value.__lastChangedBy;
+        } },
+        { name: '__lastChangedOn', type: 'string', convert: function(value,record){
+            // if value is passed directly, just take it
+            if ( !Ext.isEmpty(value) ) { return value; }
+            var pref = record.get('__pref');
+            if ( Ext.isEmpty(pref) ) { return null; }
+            var pref_value = Ext.JSON.decode(pref.get('Value'));
+            return pref_value.__lastChangedOn;
         }},
-        { name: '__lastChangedBy', type: 'object' },
-        { name: '__lastChangedOn', type: 'string' },
         { name: '__monthStart', type: 'string' },
-        { name: '__dataProjectRef', type:'string' } // for the pref to be assigned to
+        { name: '__dataProjectRef', type:'string' }, // for the pref to be assigned to
+        
+        { name: '__instantiated', type:'boolean', defaultValue: false, convert: function(value,record) { return true; } } // end of the list!
     ],
     
     getKey: function() {
@@ -61,7 +85,7 @@ Ext.define('TSModel',{
         var json_value = Ext.JSON.encode({
             __lastChangedOn: this.get('__lastChangedOn'),
             __lastChangedBy: this.get('__lastChangedBy'),
-            __percentage: this.get('__percentage')
+            __percentage:    this.get('__percentage')
         });
         
         var pref = this.get('__pref');
@@ -70,7 +94,7 @@ Ext.define('TSModel',{
             return this._createPreference(json_value);
         } else {
             console.log("Saving value for existing pref:", json_value);
-            pref.set('Value',json_value);
+            pref.set('Value', json_value);
             return pref.save();
         }
     },
@@ -93,7 +117,7 @@ Ext.define('TSModel',{
                 var pref = Ext.create(model,config);
                 pref.save({
                     callback: function(result, operation) {
-                        //me.set('__pref', result);
+                        me.set('__pref', result);
                     }
                 });
             }
