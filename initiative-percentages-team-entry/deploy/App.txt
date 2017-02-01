@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jan 31 2017 19:52:19 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Jan 31 2017 19:39:25 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jan 31 2017 19:52:19 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Tue Jan 31 2017 19:39:25 GMT-0800 (PST)";
         var STORY    = "F166";
-        var BUILDER  = "kcorkan";
-        var CHECKSUM = 78354888876;
+        var BUILDER  = "jmartin";
+        var CHECKSUM = 78839707362;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1488,7 +1488,7 @@ Ext.define('TSModel',{
                 var pref = Ext.create(model,config);
                 pref.save({
                     callback: function(result, operation) {
-                        me.set('__pref', result.getData());
+                        //me.set('__pref', result);
                     }
                 });
             }
@@ -1978,7 +1978,14 @@ Ext.define("TSInitiativePercentageEntry", {
                         })
                     });
                 },
-                summaryType: 'sum',
+                summaryType: function(values){
+                    var total = 0;
+                    Ext.Array.each(values, function(value){
+                        total += value.get('__percentage') || 0;
+                        console.log(value);
+                    });
+                    return total;
+                },
                 summaryRenderer: function(value, summaryData, dataIndex) {
                     if ( value === 0 ) { return; }
                     return Ext.String.format('TOTAL: {0}%', value); 
