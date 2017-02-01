@@ -50,12 +50,12 @@ Ext.define('TSDateCalculator',{
         }
         
         if ( before_days <= before_limit ) {
-            return Ext.Date.format(check_date,'o-m-01');
+            return Ext.Date.format(check_date,'Y-m-01');
         }
         
         if ( after_days <= after_limit ) {
             var last_month = Rally.util.DateTime.add(check_date,'month',-1);
-            return Ext.Date.format(last_month,'o-m-01');
+            return Ext.Date.format(last_month,'Y-m-01');
         }
         
         return null;

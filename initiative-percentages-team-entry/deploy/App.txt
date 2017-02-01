@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage Entry</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jan 31 2017 20:41:00 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Feb 01 2017 07:58:06 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jan 31 2017 20:41:00 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Wed Feb 01 2017 07:58:06 GMT-0800 (PST)";
         var STORY    = "F166";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 82004059132;
+        var CHECKSUM = 82215852108;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -783,12 +783,12 @@ Ext.define('TSDateCalculator',{
         }
         
         if ( before_days <= before_limit ) {
-            return Ext.Date.format(check_date,'o-m-01');
+            return Ext.Date.format(check_date,'Y-m-01');
         }
         
         if ( after_days <= after_limit ) {
             var last_month = Rally.util.DateTime.add(check_date,'month',-1);
-            return Ext.Date.format(last_month,'o-m-01');
+            return Ext.Date.format(last_month,'Y-m-01');
         }
         
         return null;
@@ -1560,6 +1560,8 @@ Ext.define("TSInitiativePercentageEntry", {
         this.monthNameForEntry = TSDateCalculator.getMonthNameInLimits(new Date(), before, after);
         this.monthIsoForEntry = TSDateCalculator.getMonthIsoInLimits(new Date(), before, after);
 
+        this.logger.log("The month iso: ", this.monthIsoForEntry);
+        
         if ( Ext.isEmpty(this.monthNameForEntry) ) {
             this._showAppMessage("Entry during this period is closed.");
             return;
