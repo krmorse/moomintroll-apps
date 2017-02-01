@@ -8,10 +8,11 @@ Ext.define('TSModel',{
         { name: 'ObjectID', type: 'int' },
         { name: 'Description', type: 'string' },
         { name: 'FormattedID', type: 'string' },
-        { name: '__percentage', type: 'float', defaultValue: 0 },
+        { name: '__percentage', type: 'float', defaultValue: undefined},
         { name: 'Project', type:'object' },
         { name: '__pref', type: 'object', convert: function(pref,record) {
             if ( Ext.isEmpty(pref) ) { return; }
+           // console.log('pref.get(Value)',pref.get('Value'));
             var value = Ext.JSON.decode(pref.get('Value'));
             record.set('__lastChangedBy',value.__lastChangedBy);
             record.set('__lastChangedOn', value.__lastChangedOn);
@@ -92,7 +93,7 @@ Ext.define('TSModel',{
                 var pref = Ext.create(model,config);
                 pref.save({
                     callback: function(result, operation) {
-                        me.set('__pref', result[0]);
+                        //me.set('__pref', result);
                     }
                 });
             }
