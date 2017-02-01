@@ -447,6 +447,7 @@ Ext.define("TSInitiativePercentageEntry", {
                             disabled: false,
                             allowDecimals: false,
                             selectOnFocus: true,
+                            allowBlank: true,
                             validator: function(value) {
                                 value = value || 0;
                                 
@@ -481,13 +482,18 @@ Ext.define("TSInitiativePercentageEntry", {
                         })
                     });
                 },
-                summaryType: 'sum',
+                summaryType: function(values){
+                    var total = 0;
+                    Ext.Array.each(values, function(value){
+                        total += value.get('__percentage') || 0;
+                    });
+                    return total;
+                },
                 summaryRenderer: function(value, summaryData, dataIndex) {
                     if ( value === 0 ) { return; }
                     return Ext.String.format('TOTAL: {0}%', value); 
                 },
                 renderer: function(value,meta,record) {
-                    console.log('value', value);
                     if ( value === null || isNaN(value)) {
                         return "";
                     }
