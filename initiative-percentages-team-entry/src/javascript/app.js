@@ -39,6 +39,8 @@ Ext.define("TSInitiativePercentageEntry", {
         this.monthNameForEntry = TSDateCalculator.getMonthNameInLimits(new Date(), before, after);
         this.monthIsoForEntry = TSDateCalculator.getMonthIsoInLimits(new Date(), before, after);
 
+        this.logger.log("The month iso: ", this.monthIsoForEntry);
+        
         if ( Ext.isEmpty(this.monthNameForEntry) ) {
             this._showAppMessage("Entry during this period is closed.");
             return;
