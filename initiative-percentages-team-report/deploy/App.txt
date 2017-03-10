@@ -3,13 +3,13 @@
 <head>
     <title>TS Initiative Percentage View</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jan 17 2017 18:27:35 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Mar 09 2017 18:21:29 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jan 17 2017 18:27:35 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Mar 09 2017 18:21:29 GMT-0800 (PST)";
         var STORY    = "F166";
-        var BUILDER  = "jmartin";
-        var CHECKSUM = 87840323265;
+        var BUILDER  = "marjo60";
+        var CHECKSUM = 88111731907;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -781,12 +781,12 @@ Ext.define('TSDateCalculator',{
         }
         
         if ( before_days <= before_limit ) {
-            return Ext.Date.format(check_date,'o-m-01');
+            return Ext.Date.format(check_date,'Y-m-01');
         }
         
         if ( after_days <= after_limit ) {
             var last_month = Rally.util.DateTime.add(check_date,'month',-1);
-            return Ext.Date.format(last_month,'o-m-01');
+            return Ext.Date.format(last_month,'Y-m-01');
         }
         
         return null;
@@ -1893,13 +1893,14 @@ Ext.define("TSInitiativePercentageView", {
                 width: 100,
                 align: 'center',
                 renderer: function(v) {
+                	console.log('--',month, v[month],v);
                     if ( Ext.isEmpty(v) ) { return ""; }
                     var value = v[month];
                     
                     if ( Ext.isString(value) ) {
                         value = Ext.JSON.decode(value);
                     }
-                    if ( Ext.isEmpty(value) ) { return ""; }
+                    if ( Ext.isEmpty(value) || Ext.isEmpty(value.__percentage) ) { return ""; }
                     
                     return value.__percentage + "%";
                 }

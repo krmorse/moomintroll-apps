@@ -93,7 +93,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
                 text: 'Cancel',
                 float: 'left',
                 cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
-                handler: this.close,
+                handler: this._cancel,
                 scope: this
 
             },{
@@ -133,6 +133,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         this.down('#submitButton').setVisible(false);
     },
     _cancel: function() {
+    	this.survey.clearValues();
         this.fireEvent('cancel');
         this.close();
     },
@@ -203,7 +204,6 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
 
     },
     _updateButtons: function(choiceValue){
-        console.log('choiceValue', choiceValue);
         var isLast = this.survey.isLast(choiceValue);
 
         this.down('#backButton').setDisabled(this.survey.isFirst());

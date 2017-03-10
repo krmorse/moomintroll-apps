@@ -3,7 +3,6 @@ Ext.define('CA.agile.technicalservices.Survey',{
         Ext.apply(this, config);
         this.questionPath = [];
         this.panelPath = [];
-        console.log('CA.agile.technicalservices.Survey', this);
     },
     getTitle: function(){
         return this.title;
@@ -15,7 +14,6 @@ Ext.define('CA.agile.technicalservices.Survey',{
         this.record = record;
     },
     getID: function(){
-        console.log('getID', this.record.get('FormattedID'));
         return this.record && this.record.get('FormattedID') || "Unknown";
     },
     //getRootKey: function(){
@@ -85,7 +83,6 @@ Ext.define('CA.agile.technicalservices.Survey',{
         this.setValue(containerValue);
        // this.questionPath.push(selectedChildKey);
        // this.questions[selectedChildKey].value = containerValue;
-        console.log('submit', this.panelPath, containerValue);
         var updates = {};
         Ext.Array.each(this.panelPath, function(key){
             var panel = this.panels[key];
@@ -99,7 +96,8 @@ Ext.define('CA.agile.technicalservices.Survey',{
             }
         }, this);
 
-        console.log('updates', updates);
+        this.clearValues();
+        
         if (!preview){
             Ext.Object.each(updates, function(field,value){
                 this.record.set(field, value);
@@ -124,6 +122,20 @@ Ext.define('CA.agile.technicalservices.Survey',{
 
         return deferred;
     },
+    
+    // clear after submitting so it doesn't default for the next one
+    clearValues: function() {
+    	Ext.Array.each(this.panelPath, function(key){
+            var panel = this.panels[key];
+            
+            if (panel.options && panel.value >= 0 && panel.options[panel.value]){
+                if (panel.options.length > panel.value && panel.options[panel.value].field){
+                    panel.options[panel.value].value = null;
+                }
+            }
+            panel.value = null;
+        }, this);
+    },
     //isFirstButton: function(){
     //    return (this.questionPath.length === 1);
     //},
@@ -131,7 +143,6 @@ Ext.define('CA.agile.technicalservices.Survey',{
         return (this.panelPath.length === 1);
     },
     isLast: function(selectedValue){
-        console.log('isLast', selectedValue);
         var key = this.getCurrentPanelKey();
 
         var panelCfg = this.panels[key],
@@ -154,10 +165,7 @@ Ext.define('CA.agile.technicalservices.Survey',{
     },
     setValue: function(containerValue){
         var containerKey = this.getCurrentPanelKey();
-        console.log('setValue', containerKey,containerValue);
         this.panels[containerKey].value = containerValue;
-
-        console.log('setValue', this.panels);
     },
 
     getPanelCfg: function(key){
