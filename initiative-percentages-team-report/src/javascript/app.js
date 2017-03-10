@@ -614,7 +614,7 @@ Ext.define("TSInitiativePercentageView", {
                     if ( Ext.isString(value) ) {
                         value = Ext.JSON.decode(value);
                     }
-                    if ( Ext.isEmpty(value) ) { return ""; }
+                    if ( Ext.isEmpty(value) || Ext.isEmpty(value.__percentage) ) { return ""; }
                     
                     return value.__percentage + "%";
                 }
