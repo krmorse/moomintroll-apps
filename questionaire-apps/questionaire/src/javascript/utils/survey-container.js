@@ -51,8 +51,6 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
             for (var i=0; i<cfg.options.length; i++){
                 var opt = options[i];
                 if (opt){
-                    console.log('opt', opt.nextSection, i);
-
                     var checked = cfg.value === i;
 
                     items.push({
@@ -72,11 +70,9 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
                 }
             }
         }
-        console.log('_getChoiceItems', items);
         return items;
     },
     choiceUpdated: function(radioBtn){
-        console.log('choice updated', radioBtn);
         if (radioBtn.value === true){
             this.fireEvent('choiceupdated', radioBtn.inputValue);
         }
@@ -156,7 +152,6 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
             return true;
         }
 
-        console.log('validate', this.getValue(),this.getValue() >= 0);
         if (this.surveyContainerCfg.type === 'choice' && this.getValue() !== null){
             return this.getValue() >= 0;
         }

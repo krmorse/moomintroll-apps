@@ -3,13 +3,13 @@
 <head>
     <title>Questionaire</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jan 13 2017 17:17:05 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Mar 09 2017 18:09:56 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jan 13 2017 17:17:05 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Mar 09 2017 18:09:56 GMT-0800 (PST)";
         var STORY    = "F166";
-        var BUILDER  = "jmartin";
-        var CHECKSUM = 105474737481;
+        var BUILDER  = "marjo60";
+        var CHECKSUM = 107382168820;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -372,6 +372,8 @@ Ext.define('CA.agile.technicalservices.Survey',{
             }
         }, this);
 
+        this.clearValues();
+        
         console.log('updates', updates);
         if (!preview){
             Ext.Object.each(updates, function(field,value){
@@ -396,6 +398,22 @@ Ext.define('CA.agile.technicalservices.Survey',{
         }
 
         return deferred;
+    },
+    
+    // clear after submitting so it doesn't default for the next one
+    clearValues: function() {
+    	console.log('clearValues');
+    	Ext.Array.each(this.panelPath, function(key){
+            var panel = this.panels[key];
+            
+            if (panel.options && panel.value >= 0 && panel.options[panel.value]){
+                if (panel.options.length > panel.value && panel.options[panel.value].field){
+                    panel.options[panel.value].value = null;
+                }
+            }
+            panel.value = null;
+        }, this);
+    	console.log(this.panels);
     },
     //isFirstButton: function(){
     //    return (this.questionPath.length === 1);
@@ -575,8 +593,6 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSection: function(sectionConfig, idx){
         var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
             type = sectionConfig.type;
-
-        console.log('_getSection',idx);
         
         return {
             title: title,
@@ -597,7 +613,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSectionItems: function(sectionConfig, idx){
 
         var type = sectionConfig.type;
-        console.log('getSectionItems', sectionConfig.type, sectionConfig.id, type=='choice');
+
         var sectionItems = [{
             xtype: 'textareafield',
             value: sectionConfig.text,
@@ -1375,8 +1391,8 @@ Ext.define('CA.agile.technicalservices.SurveyContainer',{
                 var opt = options[i];
                 if (opt){
                     console.log('opt', opt.nextSection, i);
-
                     var checked = cfg.value === i;
+                    console.log('checked', checked, cfg.value, cfg);
 
                     items.push({
                         xtype: 'rallyradiofield',
@@ -1552,7 +1568,8 @@ Ext.define('CA.agile.technicalservices.SurveyDriver', {
         var deferred = Ext.create('Deft.Deferred');
 
         //todo: retrieve this from preferences
-        deferred.resolve(config);
+        // add clone to keep from reusing values
+        deferred.resolve(Ext.clone(config));
 
 //        deferred.resolve(Ext.create('CA.agile.technicalservices.SurveyConfiguration'));
 
@@ -1655,7 +1672,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
                 text: 'Cancel',
                 float: 'left',
                 cls: ['commentActionButton', 'commentCancel', 'secondary', 'rly-small'],
-                handler: this.close,
+                handler: this._cancel,
                 scope: this
 
             },{
@@ -1695,6 +1712,7 @@ Ext.define('CA.agile.technicalservices.SurveyPanel', {
         this.down('#submitButton').setVisible(false);
     },
     _cancel: function() {
+    	this.survey.clearValues();
         this.fireEvent('cancel');
         this.close();
     },
@@ -1952,6 +1970,7 @@ Ext.define("questionaire", {
 
         this.logger.log('launchSurvey', record.get('FormattedID'));
         this.down('rallygrid').hide();
+        
         var surveyPanel = this.getSurveyBox().add({
             xtype: 'tssurveypanel',
             width: this.getWidth(),

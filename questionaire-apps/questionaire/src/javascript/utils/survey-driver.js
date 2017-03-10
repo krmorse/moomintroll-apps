@@ -64,7 +64,8 @@ Ext.define('CA.agile.technicalservices.SurveyDriver', {
         var deferred = Ext.create('Deft.Deferred');
 
         //todo: retrieve this from preferences
-        deferred.resolve(config);
+        // add clone to keep from reusing values
+        deferred.resolve(Ext.clone(config));
 
 //        deferred.resolve(Ext.create('CA.agile.technicalservices.SurveyConfiguration'));
 

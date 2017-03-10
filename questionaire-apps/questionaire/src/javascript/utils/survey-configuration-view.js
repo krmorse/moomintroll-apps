@@ -94,8 +94,6 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSection: function(sectionConfig, idx){
         var title = Ext.String.ellipsis(Ext.String.format('Section [{0}] <div class="title-question">{1}</div>',sectionConfig.id , sectionConfig.text), this.MAX_TITLE_LEN),
             type = sectionConfig.type;
-
-        console.log('_getSection',idx);
         
         return {
             title: title,
@@ -116,7 +114,7 @@ Ext.define('CA.agile.technicalservices.survey.ConfigurationView',{
     _getSectionItems: function(sectionConfig, idx){
 
         var type = sectionConfig.type;
-        console.log('getSectionItems', sectionConfig.type, sectionConfig.id, type=='choice');
+
         var sectionItems = [{
             xtype: 'textareafield',
             value: sectionConfig.text,

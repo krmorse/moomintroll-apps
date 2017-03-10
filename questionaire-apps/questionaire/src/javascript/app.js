@@ -177,6 +177,7 @@ Ext.define("questionaire", {
 
         this.logger.log('launchSurvey', record.get('FormattedID'));
         this.down('rallygrid').hide();
+        
         var surveyPanel = this.getSurveyBox().add({
             xtype: 'tssurveypanel',
             width: this.getWidth(),
