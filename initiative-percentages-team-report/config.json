@@ -14,5 +14,8 @@
         "../common/src/javascript/_ts-file-utilities.js",
         "src/javascript/utils/_ts-initiative-model.js",
         "src/javascript/app.js"
+    ],
+    "css": [
+        "src/style/app.css"
     ]
 }

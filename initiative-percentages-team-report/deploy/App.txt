@@ -47,7 +47,8 @@ Ext.define('CA.agile.technicalservices.util.WsapiUtils',{
         var deferred = Ext.create('Deft.Deferred');
 
         var default_config = {
-            removeUnauthorizedSnapshots: true
+            removeUnauthorizedSnapshots: true,
+            sort: {}
         };
         
         var store_config = Ext.Object.merge(default_config, config);

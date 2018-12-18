@@ -241,7 +241,8 @@ Ext.define("TSInitiativePercentageView", {
             filters: filters,
             fetch: ['ObjectID','FormattedID','Name'],
             limit: Infinity,
-            compress: true
+            compress: true,
+            sort: {}
         };
         
         CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config).then({
@@ -346,7 +347,9 @@ Ext.define("TSInitiativePercentageView", {
             fetch: ['ObjectID','_ItemHierarchy','Project','_ValidTo','_ValidFrom'],
             hydrate: ['Project'],
             useHttpPost: true,
-            limit: Infinity
+            limit: Infinity,
+            compress: true,
+            sort: {}
         };
         
         return CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config);
@@ -380,7 +383,9 @@ Ext.define("TSInitiativePercentageView", {
             fetch: ['ObjectID','_ItemHierarchy','Project','_ValidTo','_ValidFrom'],
             hydrate: ['Project'],
             useHttpPost: true,
-            limit: Infinity
+            limit: Infinity,
+            compress: true,
+            sort: {}
         };
         
         return CA.agile.technicalservices.util.WsapiUtils.loadSnapshotRecords(config);
